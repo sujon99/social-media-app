@@ -47,7 +47,7 @@ A modern, scalable social media platform built with Django, featuring user authe
 
 ### 1. Clone Repository
 ```bash
-git clone <your-repo-url>
+git clone https://github.com/sujon99/social-media-app.git .
 cd social-media-app
 ```
 
