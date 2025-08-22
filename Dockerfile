@@ -31,13 +31,14 @@ FROM python:3.11-slim
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
-    DJANGO_SETTINGS_MODULE=social_media.settings \
+    DJANGO_SETTINGS_MODULE=social_media.production \
     PYTHONPATH=/app
 
 # Install runtime dependencies
 RUN apt-get update && apt-get install -y \
     default-libmysqlclient-dev \
     curl \
+    netcat \
     && rm -rf /var/lib/apt/lists/* \
     && apt-get clean
 
@@ -109,12 +110,31 @@ LOGGING = {\n\
 RUN echo '#!/bin/bash\n\
 set -e\n\
 \n\
-# Wait for database\n\
-echo "Waiting for database..."\n\
-while ! python manage.py check --database default 2>&1; do\n\
-    sleep 1\n\
+echo "Starting Social Media Application..."\n\
+echo "Environment: $DJANGO_SETTINGS_MODULE"\n\
+echo "Database Host: $DATABASE_HOST"\n\
+echo "Redis Host: $REDIS_HOST"\n\
+echo "MinIO Endpoint: $MINIO_ENDPOINT"\n\
+\n\
+# Wait for database with timeout\n\
+echo "Waiting for database connection..."\n\
+timeout=60\n\
+counter=0\n\
+while [ $counter -lt $timeout ]; do\n\
+    if python manage.py check --database default 2>/dev/null; then\n\
+        echo "Database connection successful!"\n\
+        break\n\
+    fi\n\
+    echo "Waiting for database... ($counter/$timeout seconds)"\n\
+    sleep 2\n\
+    counter=$((counter + 2))\n\
 done\n\
-echo "Database is ready!"\n\
+\n\
+if [ $counter -eq $timeout ]; then\n\
+    echo "ERROR: Database connection timeout after $timeout seconds"\n\
+    echo "Please check your database configuration and ensure the database is accessible"\n\
+    exit 1\n\
+fi\n\
 \n\
 # Run migrations\n\
 echo "Running database migrations..."\n\
@@ -125,7 +145,7 @@ echo "Collecting static files..."\n\
 python manage.py collectstatic --noinput\n\
 \n\
 # Start application\n\
-echo "Starting application..."\n\
+echo "Starting application with Gunicorn..."\n\
 exec gunicorn social_media.wsgi:application \\\n\
     --bind 0.0.0.0:8000 \\\n\
     --workers 3 \\\n\
@@ -142,7 +162,12 @@ exec gunicorn social_media.wsgi:application \\\n\
 
 # Create health check script
 RUN echo '#!/bin/bash\n\
-curl -f http://localhost:8000/ || exit 1\n\
+# Check if the application is responding\n\
+if curl -f http://localhost:8000/ >/dev/null 2>&1; then\n\
+    exit 0\n\
+else\n\
+    exit 1\n\
+fi\n\
 ' > /app/healthcheck.sh && chmod +x /app/healthcheck.sh
 
 # Switch to non-root user
@@ -152,7 +177,7 @@ USER django
 EXPOSE 8000
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD /app/healthcheck.sh
 
 # Set entrypoint

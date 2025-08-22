@@ -14,7 +14,7 @@ This guide covers deploying the Django Social Media Application using Docker and
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
 │   Nginx (80/443)│    │  Django App     │    │   MySQL (3306)  │
-│   (Reverse Proxy)│◄──►│   (8000)        │◄──►│   Database      │
+│  (Reverse Proxy)│◄──►│   (8000)        │◄──►│   Database      │
 └─────────────────┘    └─────────────────┘    └─────────────────┘
                                 │
                                 ▼
@@ -30,7 +30,7 @@ This guide covers deploying the Django Social Media Application using Docker and
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/sujon99/social-media-app.git
 cd social-media-app
 
 # Create necessary directories

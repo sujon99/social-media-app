@@ -26,32 +26,10 @@ services:
     volumes:
       - ./logs:/app/logs
       - ./static:/app/static
-    networks:
-      - social-media-network
-    healthcheck:
-      test: ["CMD", "/app/healthcheck.sh"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-
-  # Nginx Reverse Proxy (Optional)
-  nginx:
-    image: nginx:alpine
-    container_name: social-media-nginx
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
-      - ./static:/var/www/static:ro
-    depends_on:
-      - web
-    networks:
-      - social-media-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    network_mode: "host"
 
 networks:
-  social-media-network:
-    driver: bridge 
+  default:
+    external: false 

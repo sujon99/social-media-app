@@ -136,23 +136,71 @@ prod:
 # Quick setup for first time
 setup:
 	@echo "Setting up Social Media Application for first time..."
-	@mkdir -p logs static nginx/ssl mysql/init
-	@echo "Creating self-signed SSL certificates..."
-	@openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-		-keyout nginx/ssl/key.pem \
-		-out nginx/ssl/cert.pem \
-		-subj "/C=US/ST=State/L=City/O=Organization/CN=localhost" 2>/dev/null || \
-		echo "SSL certificate creation failed. Please install OpenSSL or create certificates manually."
-	@echo "Building and starting services..."
-	@make build
-	@make up
-	@echo "Waiting for services to start..."
-	@sleep 30
+	@mkdir -p logs static nginx/ssl
+	@echo "Building and starting web service..."
+	@make build-simple
+	@make up-simple
+	@echo "Waiting for service to start..."
+	@sleep 20
 	@echo "Running initial setup..."
-	@make migrate
-	@make collectstatic
+	@make migrate-simple
+	@make collectstatic-simple
 	@echo "Setup complete! Access the application at:"
 	@echo "  - Application: http://localhost:8000"
-	@echo "  - Nginx: http://localhost"
-	@echo "  - MinIO Console: http://localhost:9001"
-	@echo "  - Create superuser: make createsuperuser" 
+	@echo "  - Create superuser: make createsuperuser-simple"
+
+# Simple setup (external services)
+setup-simple:
+	@echo "Setting up Social Media Application with external services..."
+	@mkdir -p logs static
+	@echo "Building and starting web service..."
+	@make build-simple
+	@make up-simple
+	@echo "Waiting for service to start..."
+	@sleep 20
+	@echo "Running initial setup..."
+	@make migrate-simple
+	@make collectstatic-simple
+	@echo "Setup complete! Access the application at:"
+	@echo "  - Application: http://localhost:8000"
+	@echo "  - Create superuser: make createsuperuser-simple"
+
+# Build simple (web only)
+build-simple:
+	@echo "Building web service..."
+	docker-compose -f docker-compose.simple.yml build
+
+# Start simple (web only)
+up-simple:
+	@echo "Starting web service..."
+	docker-compose -f docker-compose.simple.yml up -d
+
+# Stop simple (web only)
+down-simple:
+	@echo "Stopping web service..."
+	docker-compose -f docker-compose.simple.yml down
+
+# Django management for simple setup
+shell-simple:
+	@echo "Opening Django shell..."
+	docker-compose -f docker-compose.simple.yml exec web python manage.py shell
+
+migrate-simple:
+	@echo "Running database migrations..."
+	docker-compose -f docker-compose.simple.yml exec web python manage.py migrate
+
+collectstatic-simple:
+	@echo "Collecting static files..."
+	docker-compose -f docker-compose.simple.yml exec web python manage.py collectstatic --noinput
+
+createsuperuser-simple:
+	@echo "Creating superuser..."
+	docker-compose -f docker-compose.simple.yml exec web python manage.py createsuperuser
+
+test-simple:
+	@echo "Running comprehensive test suite..."
+	docker-compose -f docker-compose.simple.yml exec web python test_app.py
+
+logs-simple:
+	@echo "Viewing web service logs..."
+	docker-compose -f docker-compose.simple.yml logs -f web 
