@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load minio_filters %}
+
+{% block title %}Dashboard - Social Media App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <!-- Welcome Section -->
+        <div class="col-12 mb-4">
+            <div class="card bg-primary text-white">
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h2 class="card-title">Welcome back, {{ user.get_full_name|default:user.username }}!</h2>
+                            <p class="card-text">Ready to share something amazing with the world?</p>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <a href="{% url 'create_post' %}" class="btn btn-light btn-lg">
+                                <i class="fas fa-plus me-2"></i>Create Post
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-file-alt fa-2x text-primary mb-3"></i>
+                    <h5 class="card-title">Your Posts</h5>
+                    <p class="card-text display-6">{{ user.posts.count }}</p>
+                    <a href="{% url 'my_posts' %}" class="btn btn-outline-primary">View All</a>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-heart fa-2x text-danger mb-3"></i>
+                    <h5 class="card-title">Total Likes</h5>
+                    <p class="card-text display-6">
+                        {% with total_likes=0 %}
+                            {% for post in user.posts.all %}
+                                {% with total_likes=total_likes|add:post.like_count %}{% endwith %}
+                            {% endfor %}
+                            {{ total_likes }}
+                        {% endwith %}
+                    </p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-4 mb-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <i class="fas fa-comments fa-2x text-success mb-3"></i>
+                    <h5 class="card-title">Total Comments</h5>
+                    <p class="card-text display-6">
+                        {% with total_comments=0 %}
+                            {% for post in user.posts.all %}
+                                {% with total_comments=total_comments|add:post.comment_count %}{% endwith %}
+                            {% endfor %}
+                            {{ total_comments }}
+                        {% endwith %}
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Recent Posts -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-stream me-2"></i>Recent Posts from Community
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if recent_posts %}
+                        <div class="row">
+                            {% for post in recent_posts|slice:":6" %}
+                                <div class="col-md-6 col-lg-4 mb-3">
+                                    <div class="card post-card h-100">
+                                        {% if post.image %}
+                                            <img src="{{ post.image|get_image_url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
+                                        {% endif %}
+                                        <div class="card-body">
+                                            <h6 class="card-title">{{ post.title|truncatechars:50 }}</h6>
+                                            <p class="card-text text-muted small">{{ post.content|truncatechars:100 }}</p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">by {{ post.author.username }}</small>
+                                                <a href="{% url 'post_detail' post.id %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'post_list' %}" class="btn btn-primary">View All Posts</a>
+                        </div>
+                    {% else %}
+                        <div class="text-center py-4">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <h5>No posts yet</h5>
+                            <p class="text-muted">Be the first to create a post!</p>
+                            <a href="{% url 'create_post' %}" class="btn btn-primary">Create Your First Post</a>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

@@ -1,0 +1,128 @@
+{% extends 'base.html' %}
+{% load minio_filters %}
+
+{% block title %}{{ post.title }} - Social Media App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-md-8 mx-auto">
+            <!-- Post -->
+            <div class="card shadow mb-4">
+                {% if post.image %}
+                    <img src="{{ post.image|get_image_url }}" class="card-img-top" alt="{{ post.title }}" style="max-height: 400px; object-fit: cover;">
+                {% endif %}
+                <div class="card-body">
+                    <h2 class="card-title">{{ post.title }}</h2>
+                    <p class="card-text">{{ post.content|linebreaks }}</p>
+                    
+                    <div class="d-flex align-items-center mb-3">
+                        {% if post.author.userprofile.profile_picture %}
+                            <img src="{{ post.author.userprofile.profile_picture|get_image_url }}" class="profile-pic me-2" alt="{{ post.author.username }}">
+                        {% else %}
+                            <div class="profile-pic me-2 bg-secondary d-flex align-items-center justify-content-center text-white">
+                                <i class="fas fa-user"></i>
+                            </div>
+                        {% endif %}
+                        <div>
+                            <strong>{{ post.author.get_full_name|default:post.author.username }}</strong><br>
+                            <small class="text-muted">{{ post.created_at|date:"F j, Y, g:i a" }}</small>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <button class="btn btn-outline-danger me-3 like-btn {% if user in post.likes.all %}liked{% endif %}" 
+                                    id="like-btn-{{ post.id }}" 
+                                    onclick="likePost({{ post.id }})">
+                                <i class="fas fa-heart"></i>
+                                <span id="like-count-{{ post.id }}">{{ post.like_count }}</span> Likes
+                            </button>
+                            <span class="text-muted">
+                                <i class="fas fa-comment me-1"></i>{{ post.comment_count }} Comments
+                            </span>
+                        </div>
+                        
+                        {% if user == post.author %}
+                            <div class="dropdown">
+                                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                    <i class="fas fa-ellipsis-v"></i>
+                                </button>
+                                <ul class="dropdown-menu">
+                                    <li><a class="dropdown-item" href="{% url 'edit_post' post.id %}">
+                                        <i class="fas fa-edit me-2"></i>Edit
+                                    </a></li>
+                                    <li><a class="dropdown-item text-danger" href="{% url 'delete_post' post.id %}">
+                                        <i class="fas fa-trash me-2"></i>Delete
+                                    </a></li>
+                                </ul>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Comments Section -->
+            <div class="card shadow">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="fas fa-comments me-2"></i>Comments ({{ post.comment_count }})
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Add Comment Form -->
+                    <form method="post" class="mb-4">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            {{ comment_form.content }}
+                            {% if comment_form.content.errors %}
+                                <div class="text-danger small">
+                                    {% for error in comment_form.content.errors %}
+                                        {{ error }}
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-paper-plane me-2"></i>Add Comment
+                        </button>
+                    </form>
+
+                    <!-- Comments List -->
+                    {% if comments %}
+                        {% for comment in comments %}
+                            <div class="d-flex mb-3">
+                                <div class="flex-shrink-0">
+                                                                    {% if comment.author.userprofile.profile_picture %}
+                                    <img src="{{ comment.author.userprofile.profile_picture|get_image_url }}" class="profile-pic" alt="{{ comment.author.username }}">
+                                {% else %}
+                                        <div class="profile-pic bg-secondary d-flex align-items-center justify-content-center text-white">
+                                            <i class="fas fa-user"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <strong>{{ comment.author.get_full_name|default:comment.author.username }}</strong>
+                                            <small class="text-muted ms-2">{{ comment.created_at|timesince }} ago</small>
+                                        </div>
+                                    </div>
+                                    <p class="mb-1">{{ comment.content|linebreaks }}</p>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% else %}
+                        <div class="text-center py-3">
+                            <i class="fas fa-comment-slash fa-2x text-muted mb-2"></i>
+                            <p class="text-muted">No comments yet. Be the first to comment!</p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% csrf_token %}
+{% endblock %} 

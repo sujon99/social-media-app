@@ -1,0 +1,135 @@
+{% extends 'base.html' %}
+{% load minio_filters %}
+
+{% block title %}Posts - Social Media App{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- Search and Create Post Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <form method="get" class="d-flex">
+                <input type="text" name="search" class="form-control me-2" placeholder="Search posts..." value="{{ search_query }}">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="fas fa-search"></i>
+                </button>
+            </form>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'create_post' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create Post
+            </a>
+        </div>
+    </div>
+
+    <!-- Posts -->
+    {% if page_obj %}
+        <div class="row">
+            {% for post in page_obj %}
+                <div class="col-md-6 col-lg-4 mb-4">
+                    <div class="card post-card h-100">
+                        {% if post.image %}
+                            <img src="{{ post.image|get_image_url }}" class="card-img-top" alt="{{ post.title }}" style="height: 200px; object-fit: cover;">
+                        {% endif %}
+                        <div class="card-body">
+                            <h5 class="card-title">{{ post.title }}</h5>
+                            <p class="card-text">{{ post.content|truncatechars:150 }}</p>
+                            
+                            <div class="d-flex align-items-center mb-3">
+                                {% if post.author.userprofile.profile_picture %}
+                                    <img src="{{ post.author.userprofile.profile_picture|get_image_url }}" class="profile-pic me-2" alt="{{ post.author.username }}">
+                                {% else %}
+                                    <div class="profile-pic me-2 bg-secondary d-flex align-items-center justify-content-center text-white">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                {% endif %}
+                                <div>
+                                    <small class="text-muted">by {{ post.author.get_full_name|default:post.author.username }}</small><br>
+                                    <small class="text-muted">{{ post.created_at|timesince }} ago</small>
+                                </div>
+                            </div>
+                            
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div class="d-flex align-items-center">
+                                    <button class="btn btn-sm btn-outline-danger me-2 like-btn {% if user in post.likes.all %}liked{% endif %}" 
+                                            id="like-btn-{{ post.id }}" 
+                                            onclick="likePost({{ post.id }})">
+                                        <i class="fas fa-heart"></i>
+                                        <span id="like-count-{{ post.id }}">{{ post.like_count }}</span>
+                                    </button>
+                                    <span class="text-muted">
+                                        <i class="fas fa-comment me-1"></i>{{ post.comment_count }}
+                                    </span>
+                                </div>
+                                <a href="{% url 'post_detail' post.id %}" class="btn btn-sm btn-outline-primary">Read More</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+            <nav aria-label="Posts pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-left"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-left"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}{% if search_query %}&search={{ search_query }}{% endif %}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_query %}&search={{ search_query }}{% endif %}">
+                                <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        {% endif %}
+    {% else %}
+        <div class="text-center py-5">
+            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+            <h4>No posts found</h4>
+            <p class="text-muted">
+                {% if search_query %}
+                    No posts match your search for "{{ search_query }}".
+                {% else %}
+                    No posts have been created yet.
+                {% endif %}
+            </p>
+            <a href="{% url 'create_post' %}" class="btn btn-primary">
+                <i class="fas fa-plus me-2"></i>Create the First Post
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+{% csrf_token %}
+{% endblock %} 

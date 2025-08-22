@@ -1,0 +1,113 @@
+/* Custom styles for Social Media App */
+
+body {
+    background-color: #f8f9fa;
+}
+
+.navbar-brand {
+    font-weight: bold;
+    color: #1877f2 !important;
+}
+
+.post-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.post-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.like-btn {
+    cursor: pointer;
+    transition: color 0.2s, background-color 0.2s;
+}
+
+.like-btn:hover {
+    color: #e74c3c;
+    background-color: #f8f9fa;
+}
+
+.like-btn.liked {
+    color: #e74c3c;
+    background-color: #f8f9fa;
+}
+
+.profile-pic {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.hero-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 100px 0;
+}
+
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.card-header {
+    background-color: #fff;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.btn-primary {
+    background-color: #1877f2;
+    border-color: #1877f2;
+}
+
+.btn-primary:hover {
+    background-color: #166fe5;
+    border-color: #166fe5;
+}
+
+.text-primary {
+    color: #1877f2 !important;
+}
+
+.alert {
+    border: none;
+    border-radius: 8px;
+}
+
+.pagination .page-link {
+    color: #1877f2;
+    border-color: #dee2e6;
+}
+
+.pagination .page-item.active .page-link {
+    background-color: #1877f2;
+    border-color: #1877f2;
+}
+
+.dropdown-item:hover {
+    background-color: #f8f9fa;
+}
+
+.form-control:focus {
+    border-color: #1877f2;
+    box-shadow: 0 0 0 0.2rem rgba(24, 119, 242, 0.25);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .hero-section {
+        padding: 60px 0;
+    }
+    
+    .display-4 {
+        font-size: 2rem;
+    }
+    
+    .btn-lg {
+        padding: 0.5rem 1rem;
+        font-size: 1rem;
+    }
+} 
