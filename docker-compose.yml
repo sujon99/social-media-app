@@ -6,8 +6,8 @@ services:
     build: .
     container_name: social-media-app
     restart: unless-stopped
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     environment:
       - DATABASE_HOST=192.168.91.110
       - DATABASE_PORT=3306
@@ -23,5 +23,31 @@ services:
       - MINIO_USE_HTTPS=false
     volumes:
       - ./logs:/app/logs
+      - ./static:/app/static
     extra_hosts:
-      - "192.168.91.110:host-gateway" 
+      - "192.168.91.110:host-gateway"
+    networks:
+      - social-media-network
+    depends_on:
+      - nginx
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    container_name: social-media-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./static:/var/www/static:ro
+    networks:
+      - social-media-network
+    depends_on:
+      - web
+
+networks:
+  social-media-network:
+    driver: bridge 

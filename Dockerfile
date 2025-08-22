@@ -14,7 +14,8 @@ WORKDIR /app
 # Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements.txt && \
+    pip install gunicorn
 
 # Copy application code
 COPY . .
@@ -59,9 +60,20 @@ python manage.py migrate --noinput\n\
 echo "Collecting static files..."\n\
 python manage.py collectstatic --noinput\n\
 \n\
-# Start application\n\
-echo "Starting Django development server..."\n\
-exec python manage.py runserver 0.0.0.0:8000\n\
+# Start application with Gunicorn\n\
+echo "Starting Gunicorn server..."\n\
+exec gunicorn social_media.wsgi:application \\\n\
+    --bind 0.0.0.0:8000 \\\n\
+    --workers 3 \\\n\
+    --worker-class gunicorn.workers.sync.SyncWorker \\\n\
+    --worker-connections 1000 \\\n\
+    --max-requests 1000 \\\n\
+    --max-requests-jitter 100 \\\n\
+    --timeout 30 \\\n\
+    --keep-alive 2 \\\n\
+    --access-logfile /app/logs/access.log \\\n\
+    --error-logfile /app/logs/error.log \\\n\
+    --log-level info\n\
 ' > /app/startup.sh && chmod +x /app/startup.sh
 
 # Expose port
