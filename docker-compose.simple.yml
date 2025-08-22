@@ -1,16 +1,14 @@
 version: '3.8'
 
 services:
-  # Django Social Media Application
   web:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.simple
     container_name: social-media-app
-    restart: unless-stopped
     ports:
       - "8000:8000"
     environment:
-      - DJANGO_SETTINGS_MODULE=social_media.production
-      - ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0
       - DATABASE_HOST=192.168.91.110
       - DATABASE_PORT=3306
       - DATABASE_NAME=mydb
@@ -25,11 +23,4 @@ services:
       - MINIO_USE_HTTPS=false
     volumes:
       - ./logs:/app/logs
-      - ./static:/app/static
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    network_mode: "host"
-
-networks:
-  default:
-    external: false 
+    restart: unless-stopped 
