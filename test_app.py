@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Test Suite for Social Media Application
-Tests all major components: Django models, Redis sessions, MinIO operations, URLs, and forms
+Tests all functionality including: Redis, MinIO, Django models, sessions, URLs, forms, image proxy, and accessibility
 """
 
 import os
@@ -9,6 +9,7 @@ import sys
 import django
 import uuid
 import time
+import requests
 from datetime import datetime, timedelta
 
 # Add the project directory to Python path
@@ -22,10 +23,13 @@ from django.contrib.auth.models import User
 from django.test import Client
 from django.core.cache import cache
 from django.conf import settings
+from django.urls import reverse
 from users.models import UserProfile
 from posts.models import Post, Comment
 from posts.utils import get_minio_client, upload_to_minio, get_minio_url, delete_from_minio
 from posts.templatetags.minio_filters import get_image_url
+from users.forms import UserRegistrationForm
+from posts.forms import PostForm
 
 def test_redis_operations():
     """Test Redis cache operations"""
@@ -205,8 +209,6 @@ def test_url_configuration():
     """Test URL configuration"""
     print("🔍 Testing URL configuration...")
     
-    from django.urls import reverse, resolve
-    
     # Test main URLs
     try:
         login_url = reverse('login')
@@ -230,9 +232,6 @@ def test_url_configuration():
 def test_django_forms():
     """Test Django forms"""
     print("🔍 Testing Django forms...")
-    
-    from users.forms import UserRegistrationForm, UserProfileForm
-    from posts.forms import PostForm
     
     # Test user registration form
     form_data = {
@@ -284,10 +283,124 @@ def test_high_availability_features():
     assert cache_value == 'ha_cache_value', "High availability cache failed"
     print("✅ High availability cache working")
 
+def test_image_proxy():
+    """Test image proxy functionality"""
+    print("🔍 Testing image proxy functionality...")
+    
+    try:
+        # Create a test image file
+        test_content = b'fake image data for testing'
+        test_filename = f"test_image_{uuid.uuid4()}.jpg"
+        
+        with open(test_filename, 'wb') as f:
+            f.write(test_content)
+        
+        print(f"📁 Created test file: {test_filename}")
+        
+        # Upload to MinIO
+        print("📤 Uploading to MinIO...")
+        uploaded_name = upload_to_minio(test_filename)
+        
+        if not uploaded_name:
+            print("❌ Upload failed")
+            return False
+        
+        print(f"✅ Uploaded as: {uploaded_name}")
+        
+        # Test MinIO URL generation
+        print("🔗 Testing MinIO URL generation...")
+        minio_url = get_minio_url(uploaded_name)
+        
+        if not minio_url:
+            print("❌ MinIO URL generation failed")
+            return False
+        
+        print(f"✅ MinIO URL: {minio_url}")
+        
+        # Test template filter (proxy URL)
+        print("🌐 Testing template filter (proxy URL)...")
+        filter_url = get_image_url(uploaded_name)
+        
+        if not filter_url:
+            print("❌ Template filter failed")
+            return False
+        
+        print(f"✅ Proxy URL: {filter_url}")
+        
+        # Check if proxy URL is different from MinIO URL
+        if filter_url != minio_url:
+            print("✅ Proxy URL is different from MinIO URL (good!)")
+        else:
+            print("⚠️  Proxy URL is same as MinIO URL")
+        
+        # Check if MinIO endpoint is hidden in proxy URL
+        if settings.MINIO_ENDPOINT not in filter_url:
+            print("✅ MinIO endpoint is hidden in proxy URL (secure!)")
+        else:
+            print("❌ MinIO endpoint is exposed in proxy URL")
+            return False
+        
+        # Clean up
+        print("🧹 Cleaning up...")
+        delete_result = delete_from_minio(uploaded_name)
+        if delete_result:
+            print("✅ File deleted from MinIO")
+        else:
+            print("⚠️  Failed to delete file from MinIO")
+        
+        # Remove local file
+        os.remove(test_filename)
+        print("✅ Local file removed")
+        
+        print("✅ Image proxy test completed successfully!")
+        return True
+        
+    except Exception as e:
+        print(f"❌ Image proxy test failed: {e}")
+        return False
+
+def test_application_accessibility():
+    """Test application accessibility from different hosts"""
+    print("🔍 Testing application accessibility...")
+    
+    # Get server configuration
+    server_host = os.getenv('SERVER_HOST', 'localhost')
+    
+    # Test local access
+    try:
+        response = requests.get(f'http://{server_host}/', timeout=5)
+        if response.status_code in [200, 302]:  # 302 for redirect to login
+            print("✅ Local access working")
+        else:
+            print(f"⚠️  Local access returned status {response.status_code}")
+    except Exception as e:
+        print(f"❌ Local access failed: {e}")
+    
+    # Test with different Host headers
+    try:
+        headers = {'Host': 'example.com'}
+        response = requests.get(f'http://{server_host}/', headers=headers, timeout=5)
+        if response.status_code in [200, 302]:
+            print("✅ Custom Host header (example.com) working")
+        else:
+            print(f"⚠️  Custom Host header returned status {response.status_code}")
+    except Exception as e:
+        print(f"❌ Custom Host header test failed: {e}")
+    
+    # Test health endpoint
+    try:
+        response = requests.get(f'http://{server_host}/health/', timeout=5)
+        if response.status_code == 200:
+            print("✅ Health endpoint working")
+        else:
+            print(f"⚠️  Health endpoint returned status {response.status_code}")
+    except Exception as e:
+        print(f"❌ Health endpoint test failed: {e}")
+
 def run_all_tests():
     """Run all tests"""
     print("🚀 Starting comprehensive test suite...")
-    print("=" * 50)
+    print("=" * 60)
     
     test_functions = [
         test_redis_operations,
@@ -296,7 +409,9 @@ def run_all_tests():
         test_redis_session_management,
         test_url_configuration,
         test_django_forms,
-        test_high_availability_features
+        test_high_availability_features,
+        test_image_proxy,
+        test_application_accessibility
     ]
     
     passed = 0
@@ -309,9 +424,9 @@ def run_all_tests():
         except Exception as e:
             print(f"❌ {test_func.__name__} failed: {e}")
             failed += 1
-        print("-" * 30)
+        print("-" * 40)
     
-    print("=" * 50)
+    print("=" * 60)
     print(f"📊 Test Results: {passed} passed, {failed} failed")
     
     if failed == 0:
