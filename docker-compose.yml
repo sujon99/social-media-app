@@ -39,7 +39,7 @@ services:
     container_name: social-media-nginx
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "0.0.0.0:80:80"
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./static:/var/www/static:ro

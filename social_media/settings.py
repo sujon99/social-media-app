@@ -15,6 +15,7 @@ SECRET_KEY = 'django-insecure-your-secret-key-here-change-in-production'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
+# Allow any host - domain management handled by DNS/hosts file
 ALLOWED_HOSTS = ['*']
 
 # Application definition
@@ -141,9 +142,17 @@ MINIO_SECRET_KEY = config('MINIO_SECRET_KEY', default='minioadmin123')
 MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='social-media-app')
 MINIO_USE_HTTPS = config('MINIO_USE_HTTPS', default=False, cast=bool)
 
-# CORS settings
+# CORS settings - allow any origin
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost",
+    "https://localhost",
+    "http://127.0.0.1",
+    "https://127.0.0.1",
+    "http://*",
+    "https://*",
+]
 
 # CSRF settings
 CSRF_TRUSTED_ORIGINS = [
@@ -153,6 +162,8 @@ CSRF_TRUSTED_ORIGINS = [
     'https://127.0.0.1',
     'http://0.0.0.0',
     'https://0.0.0.0',
+    'http://*',
+    'https://*',
 ]
 
 # Add dynamic CSRF origins from environment

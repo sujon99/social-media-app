@@ -96,6 +96,13 @@ docker-compose up -d
 ### 4. Access Application
 
 - **HTTP**: http://localhost
+- **Any Domain**: The application accepts any host/domain
+- **External Access**: Accessible from any IP pointing to your server
+
+**Domain Management:**
+- Add custom domains to `/etc/hosts` or DNS
+- Example: `192.168.91.110 myapp.local`
+- Access via: `http://myapp.local`
 
 ## 🔧 Configuration
 
