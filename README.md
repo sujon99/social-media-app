@@ -35,7 +35,7 @@ A modern Django-based social media application with Docker containerization, Ngi
 ### 1. Clone and Setup
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/sujon99/social-media-app.git
 cd social-media-app
 ```
 
@@ -125,7 +125,7 @@ The application uses environment variables for all configuration. Key variables:
 - **Redis**: 6379
 - **MinIO**: 9000
 
-## 📋 Management Commands
+## 📋 Docker Management Commands
 
 ```bash
 # Start services
@@ -233,18 +233,6 @@ social-media-app/
 ├── env.example           # Environment template
 └── README.md             # This file
 ```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Test thoroughly
-5. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License.
 
 ---
 
