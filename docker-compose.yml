@@ -28,8 +28,6 @@ services:
       - "192.168.91.110:host-gateway"
     networks:
       - social-media-network
-    depends_on:
-      - nginx
 
   # Nginx Reverse Proxy
   nginx:

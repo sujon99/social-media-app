@@ -93,6 +93,11 @@ SESSION_CACHE_ALIAS = 'default'
 SESSION_COOKIE_AGE = 3600  # 1 hour
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 
+# Additional session settings for Docker environment
+SESSION_COOKIE_SECURE = False  # Set to True only if using HTTPS
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+
 # Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -139,6 +144,24 @@ MINIO_USE_HTTPS = False
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
+# CSRF settings
+CSRF_TRUSTED_ORIGINS = [
+    'http://localhost',
+    'https://localhost',
+    'http://127.0.0.1',
+    'https://127.0.0.1',
+    'http://192.168.91.110',
+    'https://192.168.91.110',
+    'http://0.0.0.0',
+    'https://0.0.0.0',
+]
+
+# Additional CSRF settings for Docker environment
+CSRF_COOKIE_SECURE = False  # Set to True only if using HTTPS
+CSRF_COOKIE_HTTPONLY = False
+CSRF_USE_SESSIONS = True
+CSRF_COOKIE_SAMESITE = 'Lax'
 
 # Login/Logout URLs
 LOGIN_URL = '/login/'
