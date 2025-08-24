@@ -95,8 +95,8 @@ docker-compose up -d
 
 ### 4. Access Application
 
-- **HTTP**: http://localhost (redirects to HTTPS)
-- **HTTPS**: https://localhost
+- **HTTP**: http://localhost
+- **HTTPS**: https://localhost (redirects to HTTP)
 
 ## 🔧 Configuration
 
