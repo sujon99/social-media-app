@@ -12,30 +12,35 @@ This guide helps resolve common Docker issues when running the Social Media Appl
 
 **Solutions**:
 
-#### **Option A: Use Host Network Mode (Recommended)**
+#### **Option A: Check Environment Configuration**
 ```bash
-# Use the simplified docker-compose file
-docker-compose -f docker-compose.simple.yml up -d
+# Verify your .env file exists and is configured
+cat .env
 
-# Or use the Makefile
-make setup-simple
+# Ensure all required variables are set
+DATABASE_HOST=your-mysql-server-ip
+REDIS_HOST=your-redis-server-ip
+MINIO_HOST=your-minio-server-ip
+SERVER_HOST=your-server-ip
 ```
 
-#### **Option B: Check External Service Connectivity**
+#### **Option B: Test External Service Connectivity**
 ```bash
-# Test connectivity from your host machine
-telnet 192.168.91.110 3306  # MySQL
-telnet 192.168.91.110 6379  # Redis
-telnet 192.168.91.110 9000  # MinIO
+# Test connectivity from your host machine (replace with your IPs)
+telnet $DATABASE_HOST 3306  # MySQL
+telnet $REDIS_HOST 6379     # Redis
+telnet $MINIO_HOST 9000     # MinIO
 
 # If these fail, check your network configuration
 ```
 
 #### **Option C: Use Bridge Network with Extra Hosts**
 ```bash
-# Add this to your docker-compose.yml
+# Add this to your docker-compose.yml if needed
 extra_hosts:
-  - "192.168.91.110:host-gateway"
+  - "${DATABASE_HOST}:host-gateway"
+  - "${REDIS_HOST}:host-gateway"
+  - "${MINIO_HOST}:host-gateway"
 ```
 
 ### 2. **Database Connection Timeout**
@@ -46,14 +51,13 @@ extra_hosts:
 
 ```bash
 # Check if your external MySQL is accessible
-mysql -h 192.168.91.110 -u myuser -p mydb
+mysql -h $DATABASE_HOST -u $DATABASE_USER -p $DATABASE_NAME
 
-# Verify credentials in docker-compose.yml
-environment:
-  - DATABASE_HOST=192.168.91.110
-  - DATABASE_USER=myuser
-  - DATABASE_PASSWORD=mypassword
-  - DATABASE_NAME=mydb
+# Verify credentials in .env file
+DATABASE_HOST=your-mysql-server-ip
+DATABASE_USER=myuser
+DATABASE_PASSWORD=mypassword
+DATABASE_NAME=mydb
 
 # Test from within container
 docker exec -it social-media-app bash
@@ -68,11 +72,11 @@ python manage.py check --database default
 
 ```bash
 # Test Redis connectivity
-redis-cli -h 192.168.91.110 -p 6379 ping
+redis-cli -h $REDIS_HOST -p $REDIS_PORT ping
 
 # Check Redis configuration
-redis-cli -h 192.168.91.110 -p 6379 config get bind
-redis-cli -h 192.168.91.110 -p 6379 config get protected-mode
+redis-cli -h $REDIS_HOST -p $REDIS_PORT config get bind
+redis-cli -h $REDIS_HOST -p $REDIS_PORT config get protected-mode
 ```
 
 ### 4. **MinIO Connection Issues**
@@ -83,13 +87,13 @@ redis-cli -h 192.168.91.110 -p 6379 config get protected-mode
 
 ```bash
 # Test MinIO connectivity
-curl -I http://192.168.91.110:9000
+curl -I http://$MINIO_HOST:$MINIO_PORT
 
 # Check MinIO console
-curl -I http://192.168.91.110:9001
+curl -I http://$MINIO_HOST:9001
 
 # Verify credentials
-curl -u minioadmin:minioadmin123 http://192.168.91.110:9000
+curl -u $MINIO_ACCESS_KEY:$MINIO_SECRET_KEY http://$MINIO_HOST:$MINIO_PORT
 ```
 
 ## 🔧 Quick Fix Commands
@@ -98,14 +102,13 @@ curl -u minioadmin:minioadmin123 http://192.168.91.110:9000
 ```bash
 # Stop all containers
 docker-compose down
-docker-compose -f docker-compose.simple.yml down
 
 # Remove all containers and images
 docker system prune -a -f
 
 # Rebuild from scratch
-make build-simple
-make up-simple
+docker-compose build
+docker-compose up -d
 ```
 
 ### **Check Container Status**
@@ -128,37 +131,40 @@ docker network inspect social-media-app_social-media-network
 
 # Test network connectivity from container
 docker exec -it social-media-app bash
-ping 192.168.91.110
-telnet 192.168.91.110 3306
+ping $DATABASE_HOST
+telnet $DATABASE_HOST 3306
 ```
 
 ## 🚀 Recommended Setup
 
-### **For External Services (Your Current Setup)**
+### **For External Services**
 ```bash
-# Use the simplified setup
-make setup-simple
+# 1. Copy environment template
+cp env.example .env
 
-# This will:
-# 1. Build only the web service
-# 2. Connect to your existing services on 192.168.91.110
-# 3. Avoid network conflicts
+# 2. Edit .env with your server IPs
+nano .env
+
+# 3. Run setup
+./setup.sh
 ```
 
 ### **For Local Development (All Services in Docker)**
 ```bash
-# Use the full setup (if you want everything local)
-make setup
+# Configure for localhost
+DATABASE_HOST=localhost
+REDIS_HOST=localhost
+MINIO_HOST=localhost
+SERVER_HOST=localhost
 
-# This will:
-# 1. Start MySQL, Redis, MinIO containers
-# 2. Start the web service
-# 3. Configure internal networking
+# Run setup
+./setup.sh
 ```
 
 ## 📋 Troubleshooting Checklist
 
-- [ ] **External Services Accessible**: Can you connect to 192.168.91.110 from your host?
+- [ ] **Environment File**: Does `.env` file exist and contain correct IPs?
+- [ ] **External Services Accessible**: Can you connect to your service IPs from host?
 - [ ] **Ports Open**: Are ports 3306, 6379, 9000 accessible?
 - [ ] **Credentials Correct**: Are the database/Redis/MinIO credentials correct?
 - [ ] **Network Mode**: Are you using the right network configuration?
@@ -197,9 +203,9 @@ python test_app.py
 docker run --rm -it \
   -p 8000:8000 \
   --network host \
-  -e DATABASE_HOST=192.168.91.110 \
-  -e REDIS_HOST=192.168.91.110 \
-  -e MINIO_ENDPOINT=192.168.91.110:9000 \
+  -e DATABASE_HOST=$DATABASE_HOST \
+  -e REDIS_HOST=$REDIS_HOST \
+  -e MINIO_HOST=$MINIO_HOST \
   social-media-app_web
 ```
 
@@ -210,14 +216,15 @@ docker run --rm -it \
 # Enter container
 docker exec -it social-media-app bash
 
-# Edit production settings
-sed -i 's/DEBUG = False/DEBUG = True/' social_media/production.py
+# Check environment variables
+env | grep -E "(DATABASE|REDIS|MINIO)"
 
-# Restart container
-docker restart social-media-app
-
-# Check logs
-docker logs -f social-media-app
+# Check Django settings
+python manage.py shell
+>>> from django.conf import settings
+>>> print(settings.DATABASES)
+>>> print(settings.CACHES)
+>>> print(settings.MINIO_ENDPOINT)
 ```
 
 ### **Check Django Settings**
@@ -235,11 +242,38 @@ docker exec -it social-media-app python manage.py shell
 If you're still having issues:
 
 1. **Check the logs**: `docker logs social-media-app`
-2. **Verify external services**: Test connectivity to 192.168.91.110
-3. **Use simple setup**: `make setup-simple`
+2. **Verify environment**: Check your `.env` file configuration
+3. **Test connectivity**: Test connectivity to your service IPs
 4. **Check network**: Ensure no firewall/network restrictions
 5. **Verify credentials**: Double-check database/Redis/MinIO credentials
 
+## 🔧 Environment Variables Reference
+
+Make sure your `.env` file contains all required variables:
+
+```bash
+# Database Configuration
+DATABASE_HOST=your-mysql-server-ip
+DATABASE_PORT=3306
+DATABASE_NAME=mydb
+DATABASE_USER=myuser
+DATABASE_PASSWORD=mypassword
+
+# Redis Configuration
+REDIS_HOST=your-redis-server-ip
+REDIS_PORT=6379
+
+# MinIO Configuration
+MINIO_HOST=your-minio-server-ip
+MINIO_PORT=9000
+MINIO_ACCESS_KEY=minioadmin
+MINIO_SECRET_KEY=minioadmin123
+MINIO_BUCKET_NAME=social-media-app
+
+# Server Configuration
+SERVER_HOST=your-server-ip
+```
+
 ---
 
-**Remember**: The simplified setup (`make setup-simple`) is designed specifically for your external services configuration and should work without network conflicts. 
+**Remember**: Always check your `.env` file first - most issues are related to incorrect environment configuration! 

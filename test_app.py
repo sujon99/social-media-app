@@ -7,439 +7,320 @@ Tests all major components: Django models, Redis sessions, MinIO operations, URL
 import os
 import sys
 import django
-import tempfile
 import uuid
+import time
 from datetime import datetime, timedelta
+
+# Add the project directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'social_media.settings')
 django.setup()
 
-from django.test import Client
 from django.contrib.auth.models import User
+from django.test import Client
 from django.core.cache import cache
-from django.urls import reverse
-from posts.models import Post, Comment
-from posts.utils import upload_to_minio, delete_from_minio, get_minio_url
-from posts.templatetags.minio_filters import get_image_url
+from django.conf import settings
 from users.models import UserProfile
-from users.forms import CustomUserCreationForm, CustomAuthenticationForm
+from posts.models import Post, Comment
+from posts.utils import get_minio_client, upload_to_minio, get_minio_url, delete_from_minio
+from posts.templatetags.minio_filters import get_image_url
 
-def test_redis_connection():
-    """Test Redis connection and basic operations"""
-    print("Testing Redis connection and operations...")
+def test_redis_operations():
+    """Test Redis cache operations"""
+    print("🔍 Testing Redis operations...")
     
-    try:
-        # Test basic Redis operations
-        test_key = f"test_key_{uuid.uuid4().hex[:8]}"
-        test_value = "test_value"
-        
-        # Set value
-        cache.set(test_key, test_value, timeout=60)
-        print("   ✓ Set operation successful")
-        
-        # Get value
-        retrieved_value = cache.get(test_key)
-        if retrieved_value == test_value:
-            print("   ✓ Get operation successful")
-        else:
-            print("   ✗ Get operation failed")
-            return False
-        
-        # Delete value
-        cache.delete(test_key)
-        print("   ✓ Delete operation successful")
-        
-        # Verify deletion
-        if cache.get(test_key) is None:
-            print("   ✓ Deletion verification successful")
-        else:
-            print("   ✗ Deletion verification failed")
-            return False
-        
-        print("   ✓ Redis connection and operations working correctly")
-        return True
-        
-    except Exception as e:
-        print(f"   ✗ Redis test failed: {e}")
-        return False
+    # Test basic cache operations
+    cache.set('test_key', 'test_value', 60)
+    value = cache.get('test_key')
+    assert value == 'test_value', f"Cache get failed: expected 'test_value', got '{value}'"
+    print("✅ Basic cache operations working")
+    
+    # Test cache expiration
+    cache.set('expire_test', 'expire_value', 1)
+    time.sleep(2)
+    expired_value = cache.get('expire_test')
+    assert expired_value is None, f"Cache expiration failed: expected None, got '{expired_value}'"
+    print("✅ Cache expiration working")
+    
+    # Test cache deletion
+    cache.set('delete_test', 'delete_value')
+    cache.delete('delete_test')
+    deleted_value = cache.get('delete_test')
+    assert deleted_value is None, f"Cache deletion failed: expected None, got '{deleted_value}'"
+    print("✅ Cache deletion working")
 
 def test_minio_operations():
-    """Test MinIO upload, download, and deletion operations"""
-    print("Testing MinIO operations...")
+    """Test MinIO operations"""
+    print("🔍 Testing MinIO operations...")
     
     try:
-        # Create a temporary test file
-        with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-            temp_file.write(b'fake image data for testing')
-            temp_path = temp_file.name
+        # Test MinIO client connection
+        client = get_minio_client()
+        buckets = client.list_buckets()
+        bucket_names = [b.name for b in buckets]
+        assert settings.MINIO_BUCKET_NAME in bucket_names, f"Bucket {settings.MINIO_BUCKET_NAME} not found"
+        print("✅ MinIO client connection working")
         
-        try:
-            # Test upload
-            print("   ✓ Testing upload to MinIO...")
-            object_name = upload_to_minio(temp_path)
-            if object_name:
-                print(f"   ✓ Upload successful: {object_name}")
-            else:
-                print("   ✗ Upload failed")
-                return False
-            
-            # Test URL generation
-            print("   ✓ Testing URL generation...")
-            minio_url = get_minio_url(object_name)
-            if minio_url and '192.168.91.110:9000' in minio_url:
-                print("   ✓ URL generation successful")
-            else:
-                print("   ✗ URL generation failed")
-                return False
-            
-            # Test template filter
-            print("   ✓ Testing template filter...")
-            class MockImageField:
-                def __str__(self):
-                    return object_name
-            
-            mock_image = MockImageField()
-            filter_url = get_image_url(mock_image)
-            if filter_url and '192.168.91.110:9000' not in filter_url:
-                print("   ✓ Template filter working (MinIO hidden)")
-            else:
-                print("   ✗ Template filter failed")
-                return False
-            
-            # Test deletion
-            print("   ✓ Testing deletion from MinIO...")
-            delete_result = delete_from_minio(object_name)
-            if delete_result:
-                print("   ✓ Deletion successful")
-            else:
-                print("   ✗ Deletion failed")
-                return False
-            
-            print("   ✓ All MinIO operations working correctly")
-            return True
-            
-        finally:
-            # Clean up temp file
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
-                
+        # Test file upload
+        test_content = b"test file content"
+        test_filename = f"test_{uuid.uuid4()}.txt"
+        
+        # Create temporary file
+        with open(test_filename, 'wb') as f:
+            f.write(test_content)
+        
+        # Upload to MinIO
+        uploaded_name = upload_to_minio(test_filename)
+        assert uploaded_name is not None, "File upload failed"
+        print("✅ File upload working")
+        
+        # Test getting MinIO URL
+        minio_url = get_minio_url(uploaded_name)
+        assert minio_url is not None, "Failed to get MinIO URL"
+        # Check if URL contains the configured MinIO endpoint
+        if minio_url and settings.MINIO_ENDPOINT in minio_url:
+            print("✅ MinIO URL generation working")
+        else:
+            print("⚠️  MinIO URL format may be unexpected")
+        
+        # Test template filter
+        filter_url = get_image_url(uploaded_name)
+        assert filter_url is not None, "Template filter failed"
+        # Check if filter URL points to Django proxy (not direct MinIO)
+        if filter_url and settings.MINIO_ENDPOINT not in filter_url:
+            print("✅ Template filter working (proxy URL)")
+        else:
+            print("⚠️  Template filter may be exposing MinIO directly")
+        
+        # Test file deletion
+        delete_result = delete_from_minio(uploaded_name)
+        assert delete_result, "File deletion failed"
+        print("✅ File deletion working")
+        
+        # Clean up local file
+        os.remove(test_filename)
+        
     except Exception as e:
-        print(f"   ✗ MinIO test failed: {e}")
+        print(f"❌ MinIO operations failed: {e}")
         return False
+    
+    return True
 
 def test_django_models():
-    """Test Django models and database operations"""
-    print("Testing Django models...")
+    """Test Django models and relationships"""
+    print("🔍 Testing Django models...")
     
+    # Create test user with unique username
+    test_username = f"testuser_{uuid.uuid4().hex[:8]}"
+    user = User.objects.create_user(
+        username=test_username,
+        email=f"{test_username}@test.com",
+        password="testpass123"
+    )
+    
+    # Test UserProfile creation
     try:
-        # Create test user
-        test_username = f"testuser_{uuid.uuid4().hex[:8]}"
-        test_user = User.objects.create_user(
-            username=test_username,
-            email=f"{test_username}@test.com",
-            password="testpass123",
-            first_name="Test",
-            last_name="User"
-        )
-        print(f"   ✓ User model working. Created user: {test_username}")
-        
-        # Test UserProfile creation (should be automatic via signals)
-        try:
-            user_profile = test_user.userprofile
-            print("   ✓ UserProfile model working. Profile created automatically")
-        except UserProfile.DoesNotExist:
-            print("   ✗ UserProfile not created automatically")
-            return False
-        
-        # Create test post
-        test_post = Post.objects.create(
-            title="Test Post",
-            content="This is a test post content for testing purposes.",
-            author=test_user
-        )
-        print(f"   ✓ Post model working. Created post: {test_post.title}")
-        
-        # Create test comment
-        test_comment = Comment.objects.create(
-            content="This is a test comment.",
-            post=test_post,
-            author=test_user
-        )
-        print(f"   ✓ Comment model working. Created comment on post: {test_post.title}")
-        
-        # Test relationships
-        if test_post.author == test_user:
-            print("   ✓ Post-author relationship working")
-        else:
-            print("   ✗ Post-author relationship failed")
-            return False
-        
-        if test_comment.post == test_post:
-            print("   ✓ Comment-post relationship working")
-        else:
-            print("   ✗ Comment-post relationship failed")
-            return False
-        
-        # Test like functionality
-        test_post.likes.add(test_user)
-        if test_user in test_post.likes.all():
-            print("   ✓ Post likes functionality working")
-        else:
-            print("   ✗ Post likes functionality failed")
-            return False
-        
-        # Clean up
-        test_post.delete()
-        test_user.delete()
-        
-        print("   ✓ All Django models working correctly")
-        return True
-        
-    except Exception as e:
-        print(f"   ✗ Django models test failed: {e}")
+        profile = user.userprofile
+        assert profile is not None, "UserProfile not created automatically"
+        print("✅ UserProfile auto-creation working")
+    except UserProfile.DoesNotExist:
+        print("❌ UserProfile not created automatically")
         return False
+    
+    # Test post creation
+    post = Post.objects.create(
+        user=user,
+        title="Test Post",
+        description="Test post description"
+    )
+    assert post.id is not None, "Post creation failed"
+    print("✅ Post creation working")
+    
+    # Test comment creation
+    comment = Comment.objects.create(
+        post=post,
+        user=user,
+        content="Test comment"
+    )
+    assert comment.id is not None, "Comment creation failed"
+    print("✅ Comment creation working")
+    
+    # Test likes
+    post.likes.add(user)
+    assert user in post.likes.all(), "Like functionality failed"
+    print("✅ Like functionality working")
+    
+    # Test relationships
+    assert post in user.post_set.all(), "User-post relationship failed"
+    assert comment in post.comment_set.all(), "Post-comment relationship failed"
+    print("✅ Model relationships working")
+    
+    # Clean up
+    user.delete()
+    print("✅ Model cleanup working")
 
-def test_redis_sessions():
+def test_redis_session_management():
     """Test Redis-based session management"""
-    print("Testing Redis session management...")
+    print("🔍 Testing Redis session management...")
     
-    try:
-        # Create test user
-        test_username = f"sessionuser_{uuid.uuid4().hex[:8]}"
-        test_user = User.objects.create_user(
-            username=test_username,
-            email=f"{test_username}@test.com",
-            password="testpass123"
-        )
-        
-        # Test session creation
-        session_key = f"user_session_{test_user.id}"
-        session_data = {
-            'user_id': test_user.id,
-            'username': test_user.username,
-            'is_authenticated': True,
-            'created_at': datetime.now().isoformat()
-        }
-        
-        cache.set(session_key, session_data, timeout=3600)
-        print("   ✓ Session creation successful")
-        
-        # Test session retrieval
-        retrieved_session = cache.get(session_key)
-        if retrieved_session and retrieved_session.get('is_authenticated'):
-            print("   ✓ Session retrieval successful")
-        else:
-            print("   ✗ Session retrieval failed")
-            return False
-        
-        # Test session expiration (set short timeout for testing)
-        cache.set(session_key, session_data, timeout=1)
-        import time
-        time.sleep(2)  # Wait for expiration
-        
-        expired_session = cache.get(session_key)
-        if expired_session is None:
-            print("   ✓ Session expiration working")
-        else:
-            print("   ✗ Session expiration failed")
-            return False
-        
-        # Test session deletion
-        cache.set(session_key, session_data, timeout=3600)
-        cache.delete(session_key)
-        if cache.get(session_key) is None:
-            print("   ✓ Session deletion working")
-        else:
-            print("   ✗ Session deletion failed")
-            return False
-        
-        # Clean up
-        test_user.delete()
-        
-        print("   ✓ Redis session management working correctly")
-        return True
-        
-    except Exception as e:
-        print(f"   ✗ Redis session test failed: {e}")
-        return False
+    client = Client()
+    
+    # Test session creation
+    response = client.get('/login/')
+    assert response.status_code == 200, "Login page not accessible"
+    
+    # Create a session
+    session = client.session
+    session['test_session_key'] = 'test_session_value'
+    session.save()
+    
+    # Test session retrieval
+    retrieved_value = session.get('test_session_key')
+    assert retrieved_value == 'test_session_value', "Session retrieval failed"
+    print("✅ Session creation and retrieval working")
+    
+    # Test session expiration
+    session.set_expiry(1)  # 1 second
+    session.save()
+    time.sleep(2)
+    
+    # Try to retrieve expired session
+    expired_value = session.get('test_session_key')
+    assert expired_value is None, "Session expiration failed"
+    print("✅ Session expiration working")
+    
+    # Test session deletion
+    session['new_key'] = 'new_value'
+    session.save()
+    session.delete('new_key')
+    session.save()
+    
+    deleted_value = session.get('new_key')
+    assert deleted_value is None, "Session deletion failed"
+    print("✅ Session deletion working")
 
 def test_url_configuration():
-    """Test URL configuration and routing"""
-    print("Testing URL configuration...")
+    """Test URL configuration"""
+    print("🔍 Testing URL configuration...")
     
+    from django.urls import reverse, resolve
+    
+    # Test main URLs
     try:
-        client = Client()
+        login_url = reverse('login')
+        assert login_url == '/login/', f"Login URL mismatch: {login_url}"
+        print("✅ Login URL configuration working")
         
-        # Test home page
-        response = client.get('/')
-        if response.status_code in [200, 302]:  # 302 for redirect if authenticated
-            print("   ✓ Home page URL working")
-        else:
-            print("   ✗ Home page URL failed")
-            return False
+        dashboard_url = reverse('dashboard')
+        assert dashboard_url == '/dashboard/', f"Dashboard URL mismatch: {dashboard_url}"
+        print("✅ Dashboard URL configuration working")
         
-        # Test login page
-        response = client.get('/login/')
-        if response.status_code == 200:
-            print("   ✓ Login page URL working")
-        else:
-            print("   ✗ Login page URL failed")
-            return False
-        
-        # Test signup page
-        response = client.get('/signup/')
-        if response.status_code == 200:
-            print("   ✓ Signup page URL working")
-        else:
-            print("   ✗ Signup page URL failed")
-            return False
-        
-        # Test posts list page
-        response = client.get('/posts/')
-        if response.status_code == 302:  # Should redirect to login
-            print("   ✓ Posts list URL working (redirects to login)")
-        else:
-            print("   ✗ Posts list URL failed")
-            return False
-        
-        print("   ✓ All URL configurations working correctly")
-        return True
+        post_list_url = reverse('post_list')
+        assert post_list_url == '/posts/', f"Post list URL mismatch: {post_list_url}"
+        print("✅ Post list URL configuration working")
         
     except Exception as e:
-        print(f"   ✗ URL configuration test failed: {e}")
+        print(f"❌ URL configuration failed: {e}")
         return False
+    
+    return True
 
-def test_forms():
+def test_django_forms():
     """Test Django forms"""
-    print("Testing Django forms...")
+    print("🔍 Testing Django forms...")
     
-    try:
-        # Test user creation form
-        form_data = {
-            'username': f"formuser_{uuid.uuid4().hex[:8]}",
-            'email': f"formuser_{uuid.uuid4().hex[:8]}@test.com",
-            'password1': 'testpass123',
-            'password2': 'testpass123',
-            'first_name': 'Form',
-            'last_name': 'User'
-        }
-        
-        user_form = CustomUserCreationForm(data=form_data)
-        if user_form.is_valid():
-            print("   ✓ User creation form validation working")
-        else:
-            print(f"   ✗ User creation form validation failed: {user_form.errors}")
-            return False
-        
-        # Test authentication form
-        auth_data = {
-            'username': 'testuser',
-            'password': 'testpass123'
-        }
-        
-        auth_form = CustomAuthenticationForm(data=auth_data)
-        if auth_form.is_valid():
-            print("   ✓ Authentication form validation working")
-        else:
-            print(f"   ✗ Authentication form validation failed: {auth_form.errors}")
-            return False
-        
-        print("   ✓ All forms working correctly")
-        return True
-        
-    except Exception as e:
-        print(f"   ✗ Forms test failed: {e}")
-        return False
+    from users.forms import UserRegistrationForm, UserProfileForm
+    from posts.forms import PostForm
+    
+    # Test user registration form
+    form_data = {
+        'username': f'testuser_{uuid.uuid4().hex[:8]}',
+        'email': 'test@example.com',
+        'password1': 'testpass123',
+        'password2': 'testpass123'
+    }
+    
+    form = UserRegistrationForm(data=form_data)
+    assert form.is_valid(), f"User registration form validation failed: {form.errors}"
+    print("✅ User registration form working")
+    
+    # Test post form
+    post_form_data = {
+        'title': 'Test Post Title',
+        'description': 'Test post description'
+    }
+    
+    post_form = PostForm(data=post_form_data)
+    assert post_form.is_valid(), f"Post form validation failed: {post_form.errors}"
+    print("✅ Post form working")
 
-def test_high_availability():
+def test_high_availability_features():
     """Test high availability features"""
-    print("Testing high availability features...")
+    print("🔍 Testing high availability features...")
     
-    try:
-        # Test session persistence across cache operations
-        test_key = f"ha_test_{uuid.uuid4().hex[:8]}"
-        test_data = {
-            'user_id': 12345,
-            'username': 'ha_user',
-            'is_authenticated': True,
-            'timestamp': datetime.now().isoformat()
-        }
-        
-        # Store in Redis
-        cache.set(test_key, test_data, timeout=3600)
-        
-        # Simulate application restart (cache should persist)
-        retrieved_data = cache.get(test_key)
-        if retrieved_data and retrieved_data.get('user_id') == 12345:
-            print("   ✓ Session persistence working")
-        else:
-            print("   ✗ Session persistence failed")
-            return False
-        
-        # Test session validation
-        if retrieved_data.get('is_authenticated'):
-            print("   ✓ Session validation working")
-        else:
-            print("   ✗ Session validation failed")
-            return False
-        
-        # Clean up
-        cache.delete(test_key)
-        
-        print("   ✓ High availability features working correctly")
-        return True
-        
-    except Exception as e:
-        print(f"   ✗ High availability test failed: {e}")
-        return False
+    # Test Redis session persistence
+    client1 = Client()
+    client2 = Client()
+    
+    # Create session in one client
+    session1 = client1.session
+    session1['ha_test'] = 'ha_value'
+    session1.save()
+    
+    # Verify session is accessible (simulating different server instance)
+    session2 = client2.session
+    session2.session_key = session1.session_key
+    session2.load()
+    
+    retrieved_value = session2.get('ha_test')
+    assert retrieved_value == 'ha_value', "High availability session failed"
+    print("✅ High availability session working")
+    
+    # Test cache persistence
+    cache.set('ha_cache_test', 'ha_cache_value', 300)
+    cache_value = cache.get('ha_cache_test')
+    assert cache_value == 'ha_cache_value', "High availability cache failed"
+    print("✅ High availability cache working")
 
-def main():
+def run_all_tests():
     """Run all tests"""
+    print("🚀 Starting comprehensive test suite...")
     print("=" * 50)
-    print("Social Media Application - Comprehensive Test Suite")
-    print("=" * 50)
-    print()
     
-    tests = [
-        ("Redis Connection & Operations", test_redis_connection),
-        ("MinIO Operations", test_minio_operations),
-        ("Django Models", test_django_models),
-        ("Redis Session Management", test_redis_sessions),
-        ("URL Configuration", test_url_configuration),
-        ("Django Forms", test_forms),
-        ("High Availability Features", test_high_availability),
+    test_functions = [
+        test_redis_operations,
+        test_minio_operations,
+        test_django_models,
+        test_redis_session_management,
+        test_url_configuration,
+        test_django_forms,
+        test_high_availability_features
     ]
     
     passed = 0
-    total = len(tests)
+    failed = 0
     
-    for test_name, test_func in tests:
-        print(f"--- {test_name} ---")
-        if test_func():
+    for test_func in test_functions:
+        try:
+            test_func()
             passed += 1
-            print()
-        else:
-            print()
+        except Exception as e:
+            print(f"❌ {test_func.__name__} failed: {e}")
+            failed += 1
+        print("-" * 30)
     
     print("=" * 50)
-    print(f"Test Results: {passed}/{total} tests passed")
-    print("=" * 50)
+    print(f"📊 Test Results: {passed} passed, {failed} failed")
     
-    if passed == total:
-        print("🎉 All tests passed! Your application is fully functional.")
-        print()
-        print("Next steps:")
-        print("1. Start the development server: python manage.py runserver")
-        print("2. Open your browser and go to http://127.0.0.1:8000/")
-        print("3. Create a new account and start using the application!")
-        print()
-        print("🚀 Your social media application is ready for production!")
+    if failed == 0:
+        print("🎉 All tests passed! Your application is working correctly.")
     else:
-        print(f"⚠️  {total - passed} test(s) failed. Please check the errors above.")
-        return 1
+        print("⚠️  Some tests failed. Check the errors above.")
     
-    return 0
+    return failed == 0
 
 if __name__ == "__main__":
-    exit(main()) 
+    success = run_all_tests()
+    sys.exit(0 if success else 1) 

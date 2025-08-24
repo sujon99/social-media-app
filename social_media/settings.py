@@ -65,11 +65,11 @@ WSGI_APPLICATION = 'social_media.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'mydb',
-        'USER': 'myuser',
-        'PASSWORD': 'mypassword',
-        'HOST': '192.168.91.110',
-        'PORT': '3306',
+        'NAME': config('DATABASE_NAME', default='mydb'),
+        'USER': config('DATABASE_USER', default='myuser'),
+        'PASSWORD': config('DATABASE_PASSWORD', default='mypassword'),
+        'HOST': config('DATABASE_HOST', default='localhost'),
+        'PORT': config('DATABASE_PORT', default='3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
         },
@@ -80,7 +80,7 @@ DATABASES = {
 CACHES = {
     'default': {
         'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': 'redis://192.168.91.110:6379/1',
+        'LOCATION': f"redis://{config('REDIS_HOST', default='localhost')}:{config('REDIS_PORT', default='6379')}/1",
         'OPTIONS': {
             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
         }
@@ -135,11 +135,11 @@ STATICFILES_DIRS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # MinIO Configuration
-MINIO_ENDPOINT = '192.168.91.110:9000'
-MINIO_ACCESS_KEY = 'minioadmin'  # Default MinIO access key
-MINIO_SECRET_KEY = 'minioadmin123'  # Updated MinIO secret key
-MINIO_BUCKET_NAME = 'social-media-app'
-MINIO_USE_HTTPS = False
+MINIO_ENDPOINT = f"{config('MINIO_HOST', default='localhost')}:{config('MINIO_PORT', default='9000')}"
+MINIO_ACCESS_KEY = config('MINIO_ACCESS_KEY', default='minioadmin')
+MINIO_SECRET_KEY = config('MINIO_SECRET_KEY', default='minioadmin123')
+MINIO_BUCKET_NAME = config('MINIO_BUCKET_NAME', default='social-media-app')
+MINIO_USE_HTTPS = config('MINIO_USE_HTTPS', default=False, cast=bool)
 
 # CORS settings
 CORS_ALLOW_ALL_ORIGINS = True
@@ -151,11 +151,19 @@ CSRF_TRUSTED_ORIGINS = [
     'https://localhost',
     'http://127.0.0.1',
     'https://127.0.0.1',
-    'http://192.168.91.110',
-    'https://192.168.91.110',
     'http://0.0.0.0',
     'https://0.0.0.0',
 ]
+
+# Add dynamic CSRF origins from environment
+CSRF_TRUSTED_ORIGINS.extend([
+    f"http://{config('SERVER_HOST', default='localhost')}",
+    f"https://{config('SERVER_HOST', default='localhost')}",
+    f"http://{config('DATABASE_HOST', default='localhost')}",
+    f"https://{config('DATABASE_HOST', default='localhost')}",
+    f"http://{config('MINIO_HOST', default='localhost')}",
+    f"https://{config('MINIO_HOST', default='localhost')}",
+])
 
 # Additional CSRF settings for Docker environment
 CSRF_COOKIE_SECURE = False  # Set to True only if using HTTPS

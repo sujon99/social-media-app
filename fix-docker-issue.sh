@@ -1,123 +1,102 @@
 #!/bin/bash
 
-echo "🔧 Fixing Docker Networking Issue for Social Media App"
-echo "=================================================="
-
-# Check if we're on Linux
-if [[ "$OSTYPE" == "linux-gnu"* ]]; then
-    echo "✅ Linux detected - proceeding with fix"
+# Load environment variables
+if [ -f .env ]; then
+    export $(cat .env | grep -v '^#' | xargs)
 else
-    echo "❌ This script is for Linux systems"
-    echo "For Windows, use: docker-commands.bat setup-simple"
+    echo "❌ .env file not found. Please create one from env.example"
     exit 1
 fi
 
-# Stop any existing containers
-echo "🛑 Stopping existing containers..."
-docker-compose down 2>/dev/null
-docker-compose -f docker-compose.simple.yml down 2>/dev/null
+echo "🔧 Docker Issue Fix Script"
+echo "=========================="
 
-# Clean up any hanging containers
-echo "🧹 Cleaning up Docker resources..."
-docker system prune -f
-
-# Create necessary directories
-echo "📁 Creating necessary directories..."
-mkdir -p logs static
+# Function to test connectivity
+test_connectivity() {
+    local host=$1
+    local port=$2
+    local service=$3
+    
+    echo "Testing $service connection to $host:$port..."
+    if timeout 5 bash -c "</dev/tcp/$host/$port" 2>/dev/null; then
+        echo "✅ $service connection successful"
+        return 0
+    else
+        echo "❌ $service connection failed"
+        return 1
+    fi
+}
 
 # Test external service connectivity
 echo "🔍 Testing external service connectivity..."
-echo "Testing MySQL connection to 192.168.91.110:3306..."
-if timeout 5 bash -c "</dev/tcp/192.168.91.110/3306" 2>/dev/null; then
-    echo "✅ MySQL connection successful"
+
+# Test MySQL
+test_connectivity "${DATABASE_HOST:-localhost}" "${DATABASE_PORT:-3306}" "MySQL"
+mysql_status=$?
+
+# Test Redis
+test_connectivity "${REDIS_HOST:-localhost}" "${REDIS_PORT:-6379}" "Redis"
+redis_status=$?
+
+# Test MinIO
+test_connectivity "${MINIO_HOST:-localhost}" "${MINIO_PORT:-9000}" "MinIO"
+minio_status=$?
+
+# Check if all services are accessible
+if [ $mysql_status -eq 0 ] && [ $redis_status -eq 0 ] && [ $minio_status -eq 0 ]; then
+    echo "✅ All external services are accessible"
 else
-    echo "❌ MySQL connection failed - check your network configuration"
-    echo "Make sure 192.168.91.110 is accessible from this machine"
+    echo "❌ Some external services are not accessible"
+    echo "Please check:"
+    echo "   1. Network connectivity to your service hosts"
+    echo "   2. Service status on remote servers"
+    echo "   3. Firewall settings"
     exit 1
 fi
 
-echo "Testing Redis connection to 192.168.91.110:6379..."
-if timeout 5 bash -c "</dev/tcp/192.168.91.110/6379" 2>/dev/null; then
-    echo "✅ Redis connection successful"
-else
-    echo "❌ Redis connection failed - check your network configuration"
-    exit 1
-fi
+# Stop existing containers
+echo "🛑 Stopping existing containers..."
+docker-compose down 2>/dev/null
 
-echo "Testing MinIO connection to 192.168.91.110:9000..."
-if timeout 5 bash -c "</dev/tcp/192.168.91.110/9000" 2>/dev/null; then
-    echo "✅ MinIO connection successful"
-else
-    echo "❌ MinIO connection failed - check your network configuration"
-    exit 1
-fi
+# Clean up Docker resources
+echo "🧹 Cleaning up Docker resources..."
+docker system prune -f
 
-# Build the web service
-echo "🔨 Building web service..."
-docker-compose -f docker-compose.simple.yml build
+# Rebuild images
+echo "🔨 Rebuilding Docker images..."
+docker-compose build --no-cache
 
-if [ $? -ne 0 ]; then
-    echo "❌ Build failed - check the error messages above"
-    exit 1
-fi
+# Start services
+echo "🚀 Starting services..."
+docker-compose up -d
 
-# Start the web service
-echo "🚀 Starting web service..."
-docker-compose -f docker-compose.simple.yml up -d
-
-if [ $? -ne 0 ]; then
-    echo "❌ Failed to start service - check the error messages above"
-    exit 1
-fi
-
-# Wait for service to start
-echo "⏳ Waiting for service to start..."
-sleep 20
+# Wait for services to start
+echo "⏳ Waiting for services to start..."
+sleep 30
 
 # Check service status
 echo "📊 Checking service status..."
-if docker ps | grep -q "social-media-app"; then
-    echo "✅ Service is running"
+docker-compose ps
+
+# Check logs
+echo "📋 Checking application logs..."
+docker-compose logs --tail=50 web
+
+# Test application health
+echo "🏥 Testing application health..."
+if curl -f http://localhost:8000/ >/dev/null 2>&1; then
+    echo "✅ Application is responding"
 else
-    echo "❌ Service failed to start"
-    echo "Checking logs..."
-    docker-compose -f docker-compose.simple.yml logs web
-    exit 1
-fi
-
-# Run migrations
-echo "🗄️ Running database migrations..."
-docker-compose -f docker-compose.simple.yml exec web python manage.py migrate
-
-if [ $? -ne 0 ]; then
-    echo "❌ Migrations failed - check the error messages above"
-    exit 1
-fi
-
-# Collect static files
-echo "📁 Collecting static files..."
-docker-compose -f docker-compose.simple.yml exec web python manage.py collectstatic --noinput
-
-if [ $? -ne 0 ]; then
-    echo "❌ Static file collection failed - check the error messages above"
-    exit 1
+    echo "❌ Application is not responding"
+    echo "Checking detailed logs..."
+    docker-compose logs web
 fi
 
 echo ""
-echo "🎉 Setup Complete! Your Social Media App is now running."
+echo "🔧 Troubleshooting completed!"
 echo ""
-echo "📱 Access your application at:"
-echo "   - Main App: http://localhost:8000"
-echo ""
-echo "🔧 Useful commands:"
-echo "   - View logs: docker-compose -f docker-compose.simple.yml logs -f web"
-echo "   - Stop service: docker-compose -f docker-compose.simple.yml down"
-echo "   - Create superuser: docker-compose -f docker-compose.simple.yml exec web python manage.py createsuperuser"
-echo "   - Run tests: docker-compose -f docker-compose.simple.yml exec web python test_app.py"
-echo ""
-echo "🚨 If you still have issues, check:"
-echo "   1. Network connectivity to 192.168.91.110"
-echo "   2. Service credentials (MySQL, Redis, MinIO)"
-echo "   3. Container logs: docker logs social-media-app"
-echo ""
-echo "📚 For more help, see: DOCKER_TROUBLESHOOTING.md" 
+echo "If issues persist:"
+echo "   1. Check the logs: docker-compose logs -f"
+echo "   2. Verify .env file configuration"
+echo "   3. Ensure external services are running"
+echo "   4. Check network connectivity" 

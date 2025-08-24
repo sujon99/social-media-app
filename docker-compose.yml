@@ -9,23 +9,27 @@ services:
     expose:
       - "8000"
     environment:
-      - DATABASE_HOST=192.168.91.110
-      - DATABASE_PORT=3306
-      - DATABASE_NAME=mydb
-      - DATABASE_USER=myuser
-      - DATABASE_PASSWORD=mypassword
-      - REDIS_HOST=192.168.91.110
-      - REDIS_PORT=6379
-      - MINIO_ENDPOINT=192.168.91.110:9000
-      - MINIO_ACCESS_KEY=minioadmin
-      - MINIO_SECRET_KEY=minioadmin123
-      - MINIO_BUCKET_NAME=social-media-app
-      - MINIO_USE_HTTPS=false
+      # Database Configuration
+      - DATABASE_HOST=${DATABASE_HOST:-localhost}
+      - DATABASE_PORT=${DATABASE_PORT:-3306}
+      - DATABASE_NAME=${DATABASE_NAME:-mydb}
+      - DATABASE_USER=${DATABASE_USER:-myuser}
+      - DATABASE_PASSWORD=${DATABASE_PASSWORD:-mypassword}
+      # Redis Configuration
+      - REDIS_HOST=${REDIS_HOST:-localhost}
+      - REDIS_PORT=${REDIS_PORT:-6379}
+      # MinIO Configuration
+      - MINIO_HOST=${MINIO_HOST:-localhost}
+      - MINIO_PORT=${MINIO_PORT:-9000}
+      - MINIO_ACCESS_KEY=${MINIO_ACCESS_KEY:-minioadmin}
+      - MINIO_SECRET_KEY=${MINIO_SECRET_KEY:-minioadmin123}
+      - MINIO_BUCKET_NAME=${MINIO_BUCKET_NAME:-social-media-app}
+      - MINIO_USE_HTTPS=${MINIO_USE_HTTPS:-false}
+      # Server Configuration
+      - SERVER_HOST=${SERVER_HOST:-localhost}
     volumes:
       - ./logs:/app/logs
       - ./static:/app/static
-    extra_hosts:
-      - "192.168.91.110:host-gateway"
     networks:
       - social-media-network
 

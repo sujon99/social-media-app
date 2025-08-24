@@ -1,217 +1,213 @@
 # 🚀 Social Media Application
 
-A modern, scalable social media platform built with Django, featuring user authentication, post management, image storage, and high availability architecture.
+A modern Django-based social media application with Docker containerization, Nginx reverse proxy, and production-ready features.
 
 ## ✨ Features
 
-### 🔐 User Management
-- **User Registration & Authentication**: Secure signup/login with email verification
-- **Profile Management**: Update profile information, change passwords, upload profile pictures
-- **Session Management**: Redis-backed sessions for high availability
+- **User Authentication**: Signup, login, logout with secure session management
+- **Post Management**: Create, edit, delete posts with image uploads
+- **Profile Management**: Update profile information and profile pictures
+- **Social Features**: Like posts, view other users' posts
+- **High Availability**: Redis-based session storage for scalability
+- **Object Storage**: MinIO integration for image storage
+- **Production Ready**: Nginx reverse proxy with SSL/TLS support
+- **Containerized**: Full Docker support for easy deployment
 
-### 📝 Content Management
-- **Post Creation**: Create posts with images, titles, and descriptions
-- **Image Storage**: MinIO object storage for scalable image management
-- **Like & Comment System**: Interactive social features
-- **Search Functionality**: Search posts by title, content, or author
+## 🏗️ Architecture
 
-### 🏗️ Architecture
-- **High Availability**: Redis session storage enables multi-node deployment
-- **Scalable Storage**: MinIO object storage for media files
-- **Modern UI**: Bootstrap 5 with responsive design
-- **Security**: CSRF protection, secure headers, SSL/TLS encryption
-
-### 🐳 Containerization
-- **Docker Support**: Complete containerization with Docker Compose
-- **Nginx Reverse Proxy**: Production-ready with SSL/TLS support
-- **Gunicorn WSGI**: High-performance application server
-- **Automatic Setup**: Database checking, migrations, and static file collection
-
-## 🛠️ Technology Stack
-
-- **Backend**: Django 4.2.7
+- **Frontend**: Django Templates with Bootstrap 5
+- **Backend**: Django 4.2.7 with Python 3.11
 - **Database**: MySQL 8.0
-- **Cache**: Redis 6.0+
+- **Cache/Sessions**: Redis
 - **Object Storage**: MinIO
-- **Web Server**: Nginx
-- **WSGI Server**: Gunicorn
-- **Frontend**: Bootstrap 5, Font Awesome
+- **Web Server**: Nginx (reverse proxy) + Gunicorn (WSGI)
 - **Containerization**: Docker & Docker Compose
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Docker Engine 20.10+
-- Docker Compose 2.0+
-- OpenSSL (for SSL certificate generation)
-- External services running on 192.168.91.110:
-  - MySQL (port 3306)
-  - Redis (port 6379)
-  - MinIO (port 9000)
 
-### 1. Clone Repository
+- Docker and Docker Compose
+- MySQL server running
+- Redis server running  
+- MinIO server running
+
+### 1. Clone and Setup
+
 ```bash
-git clone https://github.com/sujon99/social-media-app.git
+git clone <repository-url>
 cd social-media-app
 ```
 
-### 2. Quick Setup (Recommended)
+### 2. Configure Environment
+
+Copy the environment template and customize it for your server:
+
 ```bash
-# Using Makefile (Linux/Mac)
-make setup
-
-# Using Windows batch file
-setup.bat
-
-# Using shell script (Linux)
-chmod +x setup.sh
-./setup.sh
-
-# Manual Docker commands
-docker-compose build
-docker-compose up -d
+cp env.example .env
 ```
 
-### 3. Access Application
-- **HTTP**: http://localhost (redirects to HTTPS)
-- **HTTPS**: https://localhost
+Edit `.env` file with your server configuration:
 
-## 🔧 Configuration
-
-### Environment Variables
-The application automatically uses these environment variables from docker-compose.yml:
-
-```env
+```bash
 # Database Configuration
-DATABASE_HOST=192.168.91.110
+DATABASE_HOST=your-mysql-server-ip
 DATABASE_PORT=3306
 DATABASE_NAME=mydb
 DATABASE_USER=myuser
 DATABASE_PASSWORD=mypassword
 
 # Redis Configuration
-REDIS_HOST=192.168.91.110
+REDIS_HOST=your-redis-server-ip
 REDIS_PORT=6379
 
 # MinIO Configuration
-MINIO_ENDPOINT=192.168.91.110:9000
+MINIO_HOST=your-minio-server-ip
+MINIO_PORT=9000
 MINIO_ACCESS_KEY=minioadmin
 MINIO_SECRET_KEY=minioadmin123
 MINIO_BUCKET_NAME=social-media-app
+
+# Server Configuration
+SERVER_HOST=your-server-public-ip
 ```
 
-## 📋 Management Commands
+### 3. Deploy
 
-### Using Makefile (Linux/Mac)
+**Linux/Mac:**
 ```bash
-make help          # Show all available commands
-make build         # Build Docker images
-make up            # Start application
-make down          # Stop application
-make logs          # View logs
-make logs-web      # View web logs
-make logs-nginx    # View Nginx logs
-make restart       # Restart application
-make setup         # Complete setup (build + start)
-make clean         # Clean up Docker resources
-make ssl           # Generate SSL certificates
+chmod +x setup.sh
+./setup.sh
 ```
 
-### Using Docker Compose
+**Windows:**
 ```bash
+# Copy environment template
+cp env.example .env
+
+# Edit .env with your server configuration
+notepad .env
+
 # Build and start
 docker-compose build
 docker-compose up -d
+```
+
+### 4. Access Application
+
+- **HTTP**: http://localhost (redirects to HTTPS)
+- **HTTPS**: https://localhost
+
+## 🔧 Configuration
+
+### Environment Variables
+
+The application uses environment variables for all configuration. Key variables:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `DATABASE_HOST` | MySQL server IP | localhost |
+| `REDIS_HOST` | Redis server IP | localhost |
+| `MINIO_HOST` | MinIO server IP | localhost |
+| `SERVER_HOST` | Your server's public IP | localhost |
+
+### Port Configuration
+
+- **Nginx**: 80 (HTTP), 443 (HTTPS)
+- **Django**: 8000 (internal)
+- **MySQL**: 3306
+- **Redis**: 6379
+- **MinIO**: 9000
+
+## 📋 Management Commands
+
+```bash
+# Start services
+docker-compose up -d
+
+# Stop services
+docker-compose down
 
 # View logs
 docker-compose logs -f
-docker-compose logs -f web
-docker-compose logs -f nginx
 
-# Stop
-docker-compose down
-
-# Restart
+# Restart services
 docker-compose restart
-```
 
-### Django Management
-```bash
-# Open Django shell
-docker exec social-media-app python manage.py shell
-
-# Run migrations
-docker exec social-media-app python manage.py migrate
-
-# Collect static files
-docker exec social-media-app python manage.py collectstatic
-
-# Create superuser
-docker exec social-media-app python manage.py createsuperuser
-
-# Run tests
-docker exec social-media-app python test_app.py
+# Rebuild and restart
+docker-compose down && docker-compose up -d --build
 ```
 
 ## 🧪 Testing
 
-### Run Test Suite
-```bash
-# Using Makefile
-make test
+Run the comprehensive test suite:
 
-# Using Docker
+```bash
 docker exec social-media-app python test_app.py
 ```
 
-The test suite covers:
-- Database connectivity
-- Redis operations
-- MinIO file operations
-- Django models and views
-- Session management
-- High availability features
+## 🔒 Security Features
 
-## 🔒 SSL Configuration
+- **CSRF Protection**: Enabled with dynamic trusted origins
+- **Session Security**: Redis-based sessions with configurable timeouts
+- **HTTPS**: Nginx SSL/TLS termination
+- **Security Headers**: Implemented via Nginx
+- **Input Validation**: Django form validation
+- **SQL Injection Protection**: Django ORM
 
-### Self-Signed Certificates
-The setup automatically generates self-signed SSL certificates:
-- **Location**: `nginx/ssl/`
-- **Files**: `cert.pem` (certificate), `key.pem` (private key)
-- **Validity**: 365 days
+## 🌐 Deployment on Different Servers
 
-### Production SSL
-For production deployment, replace the self-signed certificates:
-1. Obtain SSL certificates from a trusted CA
-2. Replace `nginx/ssl/cert.pem` and `nginx/ssl/key.pem`
-3. Restart the application: `docker-compose restart`
+The application is designed to be **server-agnostic**. To deploy on any server:
 
-## 🔍 Troubleshooting
+1. **Update `.env` file** with your server's IP addresses
+2. **Ensure external services** (MySQL, Redis, MinIO) are accessible
+3. **Run setup script** - it will automatically configure everything
 
-### Common Issues
-1. **Database Connection**: Ensure MySQL is running on 192.168.91.110:3306
-2. **Redis Connection**: Ensure Redis is running on 192.168.91.110:6379
-3. **MinIO Connection**: Ensure MinIO is running on 192.168.91.110:9000
-4. **SSL Certificate**: Check if certificates exist in `nginx/ssl/`
+### Example for Different Environments:
 
-### Check Logs
+**Development (localhost):**
 ```bash
-# View application logs
-docker logs social-media-app
-
-# View Nginx logs
-docker logs social-media-nginx
-
-# View real-time logs
-docker logs -f social-media-app
-docker logs -f social-media-nginx
+DATABASE_HOST=localhost
+REDIS_HOST=localhost
+MINIO_HOST=localhost
+SERVER_HOST=localhost
 ```
 
-### Reset Everything
+**Production Server (192.168.1.100):**
 ```bash
-# Clean up and restart
-make clean
-make setup
+DATABASE_HOST=192.168.1.100
+REDIS_HOST=192.168.1.100
+MINIO_HOST=192.168.1.100
+SERVER_HOST=192.168.1.100
+```
+
+**Cloud Deployment (example.com):**
+```bash
+DATABASE_HOST=db.example.com
+REDIS_HOST=redis.example.com
+MINIO_HOST=storage.example.com
+SERVER_HOST=app.example.com
+```
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+1. **Connection Refused**: Check if external services (MySQL, Redis, MinIO) are running
+2. **CSRF Errors**: Verify `SERVER_HOST` in `.env` matches your server IP
+3. **Image Upload Issues**: Ensure MinIO bucket exists and credentials are correct
+
+### Logs
+
+```bash
+# Application logs
+docker-compose logs web
+
+# Nginx logs
+docker-compose logs nginx
+
+# All logs
+docker-compose logs -f
 ```
 
 ## 📁 Project Structure
@@ -222,18 +218,13 @@ social-media-app/
 ├── users/                 # User management app
 ├── posts/                 # Post management app
 ├── templates/             # HTML templates
-├── static/                # Static files (CSS, JS)
-├── logs/                  # Application logs
+├── static/                # Static files
 ├── nginx/                 # Nginx configuration
-│   ├── nginx.conf        # Nginx configuration
-│   └── ssl/              # SSL certificates
-├── Dockerfile             # Docker image definition
-├── docker-compose.yml     # Docker services configuration
-├── requirements.txt       # Python dependencies
-├── setup.sh              # Linux setup script
-├── setup.bat             # Windows setup script
-├── generate-ssl.sh       # SSL certificate generation
-├── Makefile              # Development commands
+├── logs/                  # Application logs
+├── docker-compose.yml     # Docker services
+├── Dockerfile            # Django application image
+├── requirements.txt      # Python dependencies
+├── env.example           # Environment template
 └── README.md             # This file
 ```
 
@@ -247,7 +238,7 @@ social-media-app/
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
 
 ---
 

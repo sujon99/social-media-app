@@ -1,74 +1,102 @@
 #!/usr/bin/env python3
 """
-Test image proxy functionality
+Test script for image proxy functionality
 """
 
 import os
 import sys
 import django
+import tempfile
+import uuid
+
+# Add the project directory to Python path
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 # Set up Django environment
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'social_media.settings')
 django.setup()
 
+from django.conf import settings
+from posts.utils import upload_to_minio, get_minio_url, delete_from_minio
 from posts.templatetags.minio_filters import get_image_url
-from posts.utils import upload_to_minio
-import tempfile
 
 def test_image_proxy():
-    """Test image proxy functionality"""
-    print("Testing image proxy functionality...")
-    
-    # Create a temporary test file
-    with tempfile.NamedTemporaryFile(suffix='.jpg', delete=False) as temp_file:
-        temp_file.write(b'fake image data')
-        temp_path = temp_file.name
+    """Test the image proxy functionality"""
+    print("🔍 Testing Image Proxy Functionality")
+    print("=" * 40)
     
     try:
-        # Test upload to MinIO
-        print("1. Testing image upload to MinIO...")
-        object_name = upload_to_minio(temp_path)
-        if object_name:
-            print(f"   ✓ Upload successful: {object_name}")
-        else:
-            print("   ✗ Upload failed")
+        # Create a test image file
+        test_content = b'fake image data for testing'
+        test_filename = f"test_image_{uuid.uuid4()}.jpg"
+        
+        with open(test_filename, 'wb') as f:
+            f.write(test_content)
+        
+        print(f"📁 Created test file: {test_filename}")
+        
+        # Upload to MinIO
+        print("📤 Uploading to MinIO...")
+        uploaded_name = upload_to_minio(test_filename)
+        
+        if not uploaded_name:
+            print("❌ Upload failed")
             return False
         
-        # Test template filter (should return Django URL, not MinIO URL)
-        print("2. Testing template filter...")
-        # Create a mock ImageField object
-        class MockImageField:
-            def __str__(self):
-                return object_name
+        print(f"✅ Uploaded as: {uploaded_name}")
         
-        mock_image = MockImageField()
-        filter_url = get_image_url(mock_image)
-        if filter_url:
-            print(f"   ✓ Template filter working: {filter_url}")
-            # Check that it's a Django URL, not MinIO URL
-            if '192.168.91.110:9000' not in filter_url:
-                print("   ✓ URL is Django URL (MinIO server hidden)")
-            else:
-                print("   ✗ URL still contains MinIO server details")
-                return False
+        # Test MinIO URL generation
+        print("🔗 Testing MinIO URL generation...")
+        minio_url = get_minio_url(uploaded_name)
+        
+        if not minio_url:
+            print("❌ MinIO URL generation failed")
+            return False
+        
+        print(f"✅ MinIO URL: {minio_url}")
+        
+        # Test template filter (proxy URL)
+        print("🌐 Testing template filter (proxy URL)...")
+        filter_url = get_image_url(uploaded_name)
+        
+        if not filter_url:
+            print("❌ Template filter failed")
+            return False
+        
+        print(f"✅ Proxy URL: {filter_url}")
+        
+        # Check if proxy URL is different from MinIO URL
+        if filter_url != minio_url:
+            print("✅ Proxy URL is different from MinIO URL (good!)")
         else:
-            print("   ✗ Template filter failed")
+            print("⚠️  Proxy URL is same as MinIO URL")
+        
+        # Check if MinIO endpoint is hidden in proxy URL
+        if settings.MINIO_ENDPOINT not in filter_url:
+            print("✅ MinIO endpoint is hidden in proxy URL (secure!)")
+        else:
+            print("❌ MinIO endpoint is exposed in proxy URL")
             return False
         
         # Clean up
-        from posts.utils import delete_from_minio
-        delete_from_minio(object_name)
+        print("🧹 Cleaning up...")
+        delete_result = delete_from_minio(uploaded_name)
+        if delete_result:
+            print("✅ File deleted from MinIO")
+        else:
+            print("⚠️  Failed to delete file from MinIO")
         
-        print("\n🎉 Image proxy test passed!")
+        # Remove local file
+        os.remove(test_filename)
+        print("✅ Local file removed")
+        
+        print("\n🎉 Image proxy test completed successfully!")
         return True
         
     except Exception as e:
-        print(f"✗ Error during testing: {e}")
+        print(f"❌ Test failed: {e}")
         return False
-    finally:
-        # Clean up temp file
-        if os.path.exists(temp_path):
-            os.unlink(temp_path)
 
 if __name__ == "__main__":
-    test_image_proxy()
+    success = test_image_proxy()
+    sys.exit(0 if success else 1)
