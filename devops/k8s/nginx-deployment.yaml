@@ -7,7 +7,7 @@ metadata:
     app: nginx
     component: frontend
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: nginx
@@ -36,17 +36,20 @@ spec:
           subPath: nginx.conf
         - name: static-files
           mountPath: /var/www/static
-        livenessProbe:
-          httpGet:
-            path: /
+        startupProbe:
+          tcpSocket:
             port: 80
-          initialDelaySeconds: 30
+          failureThreshold: 30
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
+            port: 80
+          initialDelaySeconds: 20
           periodSeconds: 10
         readinessProbe:
-          httpGet:
-            path: /
+          tcpSocket:
             port: 80
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 5
       volumes:
       - name: nginx-config

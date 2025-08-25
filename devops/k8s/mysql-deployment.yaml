@@ -96,40 +96,31 @@ spec:
               key: DATABASE_PASSWORD
         resources:
           requests:
-            memory: "512Mi"
-            cpu: "250m"
+            memory: "256Mi"
+            cpu: "100m"
           limits:
-            memory: "1Gi"
-            cpu: "500m"
+            memory: "512Mi"
+            cpu: "300m"
         volumeMounts:
         - name: mysql-data
           mountPath: /var/lib/mysql
         - name: mysql-config
           mountPath: /etc/mysql/conf.d
+        startupProbe:
+          tcpSocket:
+            port: 3306
+          failureThreshold: 30
+          periodSeconds: 10
         livenessProbe:
-          exec:
-            command:
-            - mysqladmin
-            - ping
-            - -h
-            - localhost
-            - -u
-            - root
-            - -p$(MYSQL_ROOT_PASSWORD)
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          exec:
-            command:
-            - mysqladmin
-            - ping
-            - -h
-            - localhost
-            - -u
-            - root
-            - -p$(MYSQL_ROOT_PASSWORD)
+          tcpSocket:
+            port: 3306
           initialDelaySeconds: 30
           periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 3306
+          initialDelaySeconds: 20
+          periodSeconds: 5
       volumes:
       - name: mysql-data
         persistentVolumeClaim:

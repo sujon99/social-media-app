@@ -7,7 +7,7 @@ metadata:
     app: social-media-app
     component: backend
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: social-media-app
@@ -213,18 +213,21 @@ spec:
           mountPath: /app/logs
         - name: static-files
           mountPath: /app/staticfiles
-        livenessProbe:
-          httpGet:
-            path: /health/
+        startupProbe:
+          tcpSocket:
             port: 8000
-          initialDelaySeconds: 60
-          periodSeconds: 30
-        readinessProbe:
-          httpGet:
-            path: /health/
+          failureThreshold: 30
+          periodSeconds: 5
+        livenessProbe:
+          tcpSocket:
             port: 8000
           initialDelaySeconds: 30
           periodSeconds: 10
+        readinessProbe:
+          tcpSocket:
+            port: 8000
+          initialDelaySeconds: 15
+          periodSeconds: 5
       volumes:
       - name: app-data
         persistentVolumeClaim:
