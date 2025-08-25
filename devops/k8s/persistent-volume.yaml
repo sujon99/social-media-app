@@ -1,0 +1,78 @@
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: social-media-pv
+  labels:
+    app: social-media-app
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: social-media-storage
+  hostPath:
+    path: /data/social-media
+    type: DirectoryOrCreate
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: social-media-pvc
+  namespace: social-media
+  labels:
+    app: social-media-app
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: social-media-storage
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: social-media-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+# Static files volume
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: social-media-static-pv
+  labels:
+    app: social-media-app
+spec:
+  capacity:
+    storage: 5Gi
+  accessModes:
+    - ReadWriteMany
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: social-media-static-storage
+  nfs:
+    server: nfs-server.default.svc.cluster.local
+    path: /exports/social-media-static
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: social-media-static-pvc
+  namespace: social-media
+  labels:
+    app: social-media-app
+spec:
+  accessModes:
+    - ReadWriteMany
+  storageClassName: social-media-static-storage
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: social-media-static-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer

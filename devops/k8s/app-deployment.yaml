@@ -1,0 +1,251 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: social-media-app
+  namespace: social-media
+  labels:
+    app: social-media-app
+    component: backend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: social-media-app
+      component: backend
+  template:
+    metadata:
+      labels:
+        app: social-media-app
+        component: backend
+    spec:
+      initContainers:
+      - name: init-db
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z mysql 3306; do echo waiting for mysql; sleep 2; done;']
+      - name: init-redis
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z redis 6379; do echo waiting for redis; sleep 2; done;']
+      - name: init-minio
+        image: busybox:1.35
+        command: ['sh', '-c', 'until nc -z minio 9000; do echo waiting for minio; sleep 2; done;']
+      containers:
+      - name: social-media-app
+        image: social-media-app:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+        env:
+        # Django Settings
+        - name: DJANGO_SETTINGS_MODULE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: DJANGO_SETTINGS_MODULE
+        - name: DEBUG
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: DEBUG
+        - name: LANGUAGE_CODE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: LANGUAGE_CODE
+        - name: TIME_ZONE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: TIME_ZONE
+        
+        # Secrets
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: DJANGO_SECRET_KEY
+        
+        # Database Configuration
+        - name: DATABASE_HOST
+          value: "mysql"
+        - name: DATABASE_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: DATABASE_NAME
+        - name: DATABASE_USER
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: DATABASE_USER
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: DATABASE_PASSWORD
+        - name: DATABASE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: DATABASE_PORT
+        
+        # Redis Configuration
+        - name: REDIS_HOST
+          value: "redis"
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: REDIS_PORT
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: REDIS_PASSWORD
+        
+        # MinIO Configuration
+        - name: MINIO_HOST
+          value: "minio"
+        - name: MINIO_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: MINIO_PORT
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: MINIO_ACCESS_KEY
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: social-media-secret
+              key: MINIO_SECRET_KEY
+        - name: MINIO_BUCKET_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: MINIO_BUCKET_NAME
+        - name: MINIO_USE_HTTPS
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: MINIO_USE_HTTPS
+        
+        # Server Configuration
+        - name: SERVER_HOST
+          value: "0.0.0.0"
+        
+        # Application Configuration
+        - name: LOGIN_URL
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: LOGIN_URL
+        - name: LOGIN_REDIRECT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: LOGIN_REDIRECT_URL
+        - name: LOGOUT_REDIRECT_URL
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: LOGOUT_REDIRECT_URL
+        
+        # Session Configuration
+        - name: SESSION_COOKIE_AGE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: SESSION_COOKIE_AGE
+        - name: SESSION_EXPIRE_AT_BROWSER_CLOSE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: SESSION_EXPIRE_AT_BROWSER_CLOSE
+        - name: SESSION_COOKIE_SECURE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: SESSION_COOKIE_SECURE
+        - name: SESSION_COOKIE_HTTPONLY
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: SESSION_COOKIE_HTTPONLY
+        - name: SESSION_COOKIE_SAMESITE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: SESSION_COOKIE_SAMESITE
+        
+        # CSRF Configuration
+        - name: CSRF_COOKIE_SECURE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: CSRF_COOKIE_SECURE
+        - name: CSRF_COOKIE_HTTPONLY
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: CSRF_COOKIE_HTTPONLY
+        - name: CSRF_USE_SESSIONS
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: CSRF_USE_SESSIONS
+        - name: CSRF_COOKIE_SAMESITE
+          valueFrom:
+            configMapKeyRef:
+              name: social-media-config
+              key: CSRF_COOKIE_SAMESITE
+        
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        volumeMounts:
+        - name: app-data
+          mountPath: /app/logs
+        - name: static-files
+          mountPath: /app/staticfiles
+        livenessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health/
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: app-data
+        persistentVolumeClaim:
+          claimName: social-media-pvc
+      - name: static-files
+        persistentVolumeClaim:
+          claimName: social-media-static-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: social-media-app
+  namespace: social-media
+  labels:
+    app: social-media-app
+    component: backend
+spec:
+  ports:
+  - port: 8000
+    targetPort: 8000
+    protocol: TCP
+  selector:
+    app: social-media-app
+    component: backend

@@ -1,0 +1,22 @@
+# Health Check Endpoint for Django Application
+# Add this URL pattern to your Django urls.py
+
+# In social_media/urls.py, add:
+# from django.http import JsonResponse
+# from django.views.decorators.csrf import csrf_exempt
+# 
+# @csrf_exempt
+# def health_check(request):
+#     return JsonResponse({
+#         "status": "healthy",
+#         "timestamp": timezone.now().isoformat(),
+#         "version": "1.0.0"
+#     })
+# 
+# urlpatterns = [
+#     # ... existing patterns ...
+#     path('health/', health_check, name='health_check'),
+# ]
+
+# This endpoint is used by Kubernetes liveness and readiness probes
+# It should return a 200 status code when the application is healthy

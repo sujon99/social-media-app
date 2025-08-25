@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: social-media-config
+  namespace: social-media
+  labels:
+    app: social-media-app
+data:
+  # Django Settings
+  DJANGO_SETTINGS_MODULE: "social_media.settings"
+  DEBUG: "False"
+  LANGUAGE_CODE: "en-us"
+  TIME_ZONE: "UTC"
+  
+  # Database Configuration
+  DATABASE_NAME: "mydb"
+  DATABASE_PORT: "3306"
+  
+  # Redis Configuration
+  REDIS_PORT: "6379"
+  
+  # MinIO Configuration
+  MINIO_PORT: "9000"
+  MINIO_BUCKET_NAME: "social-media-app"
+  MINIO_USE_HTTPS: "False"
+  
+  # Application Configuration
+  LOGIN_URL: "/login/"
+  LOGIN_REDIRECT_URL: "/dashboard/"
+  LOGOUT_REDIRECT_URL: "/login/"
+  
+  # Session Configuration
+  SESSION_COOKIE_AGE: "3600"
+  SESSION_EXPIRE_AT_BROWSER_CLOSE: "True"
+  SESSION_COOKIE_SECURE: "False"
+  SESSION_COOKIE_HTTPONLY: "True"
+  SESSION_COOKIE_SAMESITE: "Lax"
+  
+  # CSRF Configuration
+  CSRF_COOKIE_SECURE: "False"
+  CSRF_COOKIE_HTTPONLY: "False"
+  CSRF_USE_SESSIONS: "True"
+  CSRF_COOKIE_SAMESITE: "Lax"
