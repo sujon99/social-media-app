@@ -41,19 +41,20 @@ spec:
         - "200mb"
         - --maxmemory-policy
         - "allkeys-lru"
+        startupProbe:
+          tcpSocket:
+            port: 6379
+          failureThreshold: 30
+          periodSeconds: 5
         livenessProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 30
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 20
           periodSeconds: 10
         readinessProbe:
-          exec:
-            command:
-            - redis-cli
-            - ping
-          initialDelaySeconds: 5
+          tcpSocket:
+            port: 6379
+          initialDelaySeconds: 10
           periodSeconds: 5
       volumes:
       - name: redis-data

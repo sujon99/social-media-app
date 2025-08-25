@@ -47,15 +47,11 @@ spec:
         volumeMounts:
         - name: minio-data
           mountPath: /data
-        command:
-        - /bin/bash
-        - -c
-        - |
-          minio server /data --console-address ":9001" &
-          sleep 10
-          mc alias set myminio http://localhost:9000 $MINIO_ROOT_USER $MINIO_ROOT_PASSWORD
-          mc mb myminio/social-media-app --ignore-existing
-          wait
+        args:
+        - server
+        - /data
+        - --console-address
+        - ":9001"
         livenessProbe:
           httpGet:
             path: /minio/health/live
@@ -66,8 +62,8 @@ spec:
           httpGet:
             path: /minio/health/ready
             port: 9000
-          initialDelaySeconds: 5
-          periodSeconds: 5
+          initialDelaySeconds: 20
+          periodSeconds: 10
       volumes:
       - name: minio-data
         persistentVolumeClaim:
