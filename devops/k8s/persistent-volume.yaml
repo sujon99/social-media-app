@@ -36,6 +36,84 @@ metadata:
   name: social-media-storage
 provisioner: kubernetes.io/no-provisioner
 volumeBindingMode: WaitForFirstConsumer
+
+---
+# MySQL storage (hostPath, simple local persistence)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: mysql-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: mysql-pv
+  labels:
+    app: mysql
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: mysql-storage
+  hostPath:
+    path: /data/mysql
+    type: DirectoryOrCreate
+
+---
+# Redis storage (hostPath)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: redis-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: redis-pv
+  labels:
+    app: redis
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: redis-storage
+  hostPath:
+    path: /data/redis
+    type: DirectoryOrCreate
+
+---
+# MinIO storage (hostPath)
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: minio-storage
+provisioner: kubernetes.io/no-provisioner
+volumeBindingMode: WaitForFirstConsumer
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: minio-pv
+  labels:
+    app: minio
+spec:
+  capacity:
+    storage: 10Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: minio-storage
+  hostPath:
+    path: /data/minio
+    type: DirectoryOrCreate
 ---
 # Static files volume
 apiVersion: v1
